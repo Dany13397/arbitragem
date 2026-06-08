@@ -823,6 +823,7 @@ function parseOfficials(str, myRole) {
     let role;
     if (roleRaw.startsWith('2A')) role = '2A';
     else if (roleRaw.startsWith('3A')) role = '3A';
+    else if (roleRaw.startsWith('4A')) role = '4A';
     else if (roleRaw.startsWith('CRO')) role = 'CRON';
     else role = roleRaw;
 
