@@ -783,6 +783,11 @@
     </div>
 
     <div class="stats-section">
+      <div class="section-title">Jogos por Função</div>
+      <div class="comp-list" id="s-roles"></div>
+    </div>
+
+    <div class="stats-section">
       <div class="section-title">Colegas de Equipa</div>
       <div class="colleague-list" id="s-colleagues"></div>
     </div>
@@ -1483,6 +1488,19 @@ async function renderStats() {
     <div class="location-pill">
       <span>${loc}</span>
       <span class="loc-count">${cnt}×</span>
+    </div>`).join('');
+
+  // ── Jogos por função ──
+  const roleMap = {};
+  list.forEach(n => { if (n.my_role) roleMap[n.my_role] = (roleMap[n.my_role] || 0) + 1; });
+  const roleOrder = ['1A', '2A', '3A', '4A', 'CRON'];
+  const sortedRoles = Object.entries(roleMap).sort((a,b) => roleOrder.indexOf(a[0]) - roleOrder.indexOf(b[0]));
+  const maxRole = Math.max(...sortedRoles.map(r => r[1]), 1);
+  document.getElementById('s-roles').innerHTML = sortedRoles.map(([role, cnt]) => `
+    <div class="colleague-row">
+      <span class="role-tag">${role}</span>
+      <div class="col-bar" style="flex:1;margin:0 12px;"><div class="col-bar-fill" style="width:${Math.round(cnt/maxRole*100)}%"></div></div>
+      <span class="col-count">${cnt} jogo${cnt !== 1 ? 's' : ''}</span>
     </div>`).join('');
 
   // ── Colegas de equipa ──
