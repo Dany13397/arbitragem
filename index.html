@@ -419,6 +419,116 @@
       font-size: 11px;
       font-weight: 600;
     }
+
+    /* ── MÊS HEADER ── */
+    .month-group { margin-bottom: 28px; }
+
+    .month-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      padding: 0 4px 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .month-label .month-total {
+      font-family: 'Consolas', monospace;
+      color: var(--accent);
+      font-size: 13px;
+    }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.65);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      background: var(--surface2);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+    }
+
+    .modal-header .modal-title { flex: 1; font-weight: 700; font-size: 15px; }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body { padding: 20px; }
+
+    .modal-section { margin-bottom: 20px; }
+    .modal-section h4 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .modal-calc-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--surface2);
+      border-radius: 6px;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .modal-calc-line .desc { color: var(--muted); }
+    .modal-calc-line .amount { font-family: 'Consolas', monospace; font-weight: 600; }
+
+    .modal-total-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(79,127,255,.12);
+      border: 1px solid rgba(79,127,255,.3);
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+
+    .modal-total-line .label { font-weight: 600; }
+    .modal-total-line .amount { font-size: 20px; font-weight: 700; color: var(--accent); font-family: 'Consolas', monospace; }
   </style>
 </head>
 <body>
@@ -531,10 +641,70 @@
     <div class="nomeacoes-header">
       <h2>Nomeações</h2>
     </div>
-
     <div class="stats-row" id="stats-row"></div>
-
     <div id="lista-content"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ MODAL ══════════════════ -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div>
+        <span id="modal-badge-comp" class="badge badge-lp" style="margin-right:6px;"></span>
+        <span id="modal-badge-role" class="badge badge-role"></span>
+      </div>
+      <div class="modal-title" id="modal-title"></div>
+      <button class="modal-close" onclick="document.getElementById('modal-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="modal-section">
+        <h4>Jogo</h4>
+        <div class="detail-grid" style="margin-bottom:0;">
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Equipas</label>
+            <div class="teams" id="modal-teams"></div>
+          </div>
+          <div class="detail-item">
+            <label>Data</label>
+            <div class="val" id="modal-date"></div>
+          </div>
+          <div class="detail-item">
+            <label>Hora</label>
+            <div class="val" id="modal-time"></div>
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Pavilhão</label>
+            <div class="val" id="modal-venue"></div>
+          </div>
+          <div class="detail-item">
+            <label>Local</label>
+            <div class="val" id="modal-location"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <h4>Equipa de Arbitragem</h4>
+        <table class="officials-table">
+          <thead>
+            <tr>
+              <th>Função</th>
+              <th>Nome</th>
+              <th>Telemóvel</th>
+            </tr>
+          </thead>
+          <tbody id="modal-officials"></tbody>
+        </table>
+      </div>
+
+      <div class="modal-section">
+        <h4>Honorários</h4>
+        <div id="modal-calc"></div>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -794,6 +964,7 @@ async function renderLista() {
     return;
   }
 
+  _listaCache = list;
   const today = new Date();
   const totalEur = list.reduce((s, n) => s + (n.total || 0), 0);
   const upcoming = list.filter(n => parseDate(n.date) >= today).length;
@@ -828,31 +999,58 @@ async function renderLista() {
     return;
   }
 
-  cont.innerHTML = list.map(n => {
-    const d = parseDate(n.date);
-    const isPast = d < today;
-    const dayNum = n.date.split('/')[0];
-    const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    const monthStr = monthNames[parseInt(n.date.split('/')[1]) - 1] || '';
-    return `
-      <div class="nomeacao-item">
-        <div class="date-col">
-          <div class="day">${dayNum}</div>
-          <div class="month">${monthStr}</div>
-          <div class="time">${n.time}</div>
-        </div>
-        <div class="info-col">
-          <div class="teams-row">${n.home_team} <span style="color:var(--muted); font-weight:400">vs</span> ${n.away_team}</div>
-          <div class="meta-row">
-            <span class="badge badge-lp" style="font-size:10px;">${n.competition}</span>
-            &nbsp;Pav. ${n.venue} · ${n.location}
+  // Group by month/year
+  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const monthShort = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const groups = {};
+  list.forEach(n => {
+    const parts = n.date.split('/');
+    const key = parts[2] + '-' + parts[1]; // YYYY-MM for sorting
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(n);
+  });
+
+  const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+  cont.innerHTML = sortedKeys.map(key => {
+    const [year, month] = key.split('-');
+    const monthLabel = monthNames[parseInt(month) - 1] + ' ' + year;
+    const monthTotal = groups[key].reduce((s, n) => s + (n.total || 0), 0);
+
+    const items = groups[key].map(n => {
+      const d = parseDate(n.date);
+      const isPast = d < today;
+      const dayNum = n.date.split('/')[0];
+      const monthStr = monthShort[parseInt(n.date.split('/')[1]) - 1] || '';
+      return `
+        <div class="nomeacao-item" onclick="openModal(${n.id})">
+          <div class="date-col">
+            <div class="day">${dayNum}</div>
+            <div class="month">${monthStr}</div>
+            <div class="time">${n.time}</div>
           </div>
+          <div class="info-col">
+            <div class="teams-row">${n.home_team} <span style="color:var(--muted); font-weight:400">vs</span> ${n.away_team}</div>
+            <div class="meta-row">
+              <span class="badge badge-lp" style="font-size:10px;">${n.competition}</span>
+              &nbsp;Pav. ${n.venue} · ${n.location}
+            </div>
+          </div>
+          <div class="amount-col">
+            <div class="total">${fmt(n.total)}</div>
+            <div class="comp" style="margin-top:4px;">${isPast ? '<span class="done-badge">Realizado</span>' : '<span class="pending-badge">Pendente</span>'}</div>
+          </div>
+          <button class="del-btn" onclick="deleteNomeacao(event, ${n.id})">✕</button>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="month-group">
+        <div class="month-label">
+          <span>${monthLabel}</span>
+          <span class="month-total">${fmt(monthTotal)}</span>
         </div>
-        <div class="amount-col">
-          <div class="total">${fmt(n.total)}</div>
-          <div class="comp" style="margin-top:4px;">${isPast ? '<span class="done-badge">Realizado</span>' : '<span class="pending-badge">Pendente</span>'}</div>
-        </div>
-        <button class="del-btn" onclick="deleteNomeacao(event, ${n.id})">✕</button>
+        ${items}
       </div>`;
   }).join('');
 }
@@ -860,6 +1058,63 @@ async function renderLista() {
 function parseDate(str) {
   const [d, m, y] = str.split('/');
   return new Date(y, m - 1, d);
+}
+
+// ──────────────────────────────────────────────
+// MODAL
+// ──────────────────────────────────────────────
+let _listaCache = [];
+
+function openModal(id) {
+  const n = _listaCache.find(x => x.id === id);
+  if (!n) return;
+
+  const monthShort = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  document.getElementById('modal-badge-comp').textContent = n.competition;
+  document.getElementById('modal-badge-role').textContent = n.my_role || '?';
+  document.getElementById('modal-title').textContent = '#' + n.game_id;
+  document.getElementById('modal-teams').innerHTML =
+    `${n.home_team} <span class="vs">vs</span> ${n.away_team}`;
+  document.getElementById('modal-date').textContent = n.date;
+  document.getElementById('modal-time').textContent = n.time;
+  document.getElementById('modal-venue').textContent = 'Pav. ' + n.venue;
+  document.getElementById('modal-location').textContent = n.location;
+
+  const officials = Array.isArray(n.officials) ? n.officials : [];
+  document.getElementById('modal-officials').innerHTML = officials.map(o => `
+    <tr${o.isMe ? ' class="me"' : ''}>
+      <td><span class="role-tag">${o.role}</span></td>
+      <td>${o.isMe ? '<strong>' + o.name + '</strong>' : o.name}</td>
+      <td style="font-family:monospace;color:var(--muted)">${o.phone || '—'}</td>
+    </tr>`).join('');
+
+  const doubleMeal = n.km > MEAL_KM_THRESHOLD;
+  document.getElementById('modal-calc').innerHTML = `
+    <div class="modal-calc-line">
+      <span class="desc">Prémio de jogo (${n.my_role} — ${n.competition})</span>
+      <span class="amount">${fmt(n.premio)}</span>
+    </div>
+    <div class="modal-calc-line">
+      <span class="desc">Kms (${n.km} km × 2 × ${KM_RATE}€)</span>
+      <span class="amount">${fmt(n.km_total)}</span>
+    </div>
+    <div class="modal-calc-line">
+      <span class="desc">Subsídio de refeição${doubleMeal ? ' (×2)' : ''}</span>
+      <span class="amount">${fmt(n.meal_total)}</span>
+    </div>
+    <div class="modal-total-line">
+      <span class="label">Total</span>
+      <span class="amount">${fmt(n.total)}</span>
+    </div>`;
+
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
 }
 
 async function deleteNomeacao(e, id) {
