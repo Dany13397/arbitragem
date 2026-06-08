@@ -707,6 +707,12 @@
 
       <div class="modal-section">
         <h4>Honorários</h4>
+        <div class="km-input-row" style="margin-bottom:12px;">
+          <label>Distância Braga → Pavilhão:</label>
+          <input type="number" id="modal-km-input" min="0" style="width:100px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:14px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" oninput="previewModalCalc()">
+          <span style="color:var(--muted);">km</span>
+          <button class="btn btn-primary" style="padding:6px 14px;" onclick="saveModalKm()">Guardar</button>
+        </div>
         <div id="modal-calc"></div>
       </div>
 
@@ -1093,6 +1099,7 @@ function parseDate(str) {
 let _listaCache = [];
 
 function openModal(id) {
+  _modalId = id;
   const n = _listaCache.find(x => x.id === id);
   if (!n) return;
 
@@ -1116,26 +1123,70 @@ function openModal(id) {
       <td style="font-family:monospace;color:var(--muted)">${o.phone || '—'}</td>
     </tr>`).join('');
 
-  const doubleMeal = n.km > MEAL_KM_THRESHOLD;
+  document.getElementById('modal-km-input').value = n.km || 0;
+  renderModalCalc(n.my_role, n.competition, n.km || 0, n.premio, n.km_total, n.meal_total, n.total);
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+let _modalId = null;
+
+function renderModalCalc(role, comp, km, premio, kmTotal, mealTotal, total) {
+  const doubleMeal = km > MEAL_KM_THRESHOLD;
   document.getElementById('modal-calc').innerHTML = `
     <div class="modal-calc-line">
-      <span class="desc">Prémio de jogo (${n.my_role} — ${n.competition})</span>
-      <span class="amount">${fmt(n.premio)}</span>
+      <span class="desc">Prémio de jogo (${role} — ${comp})</span>
+      <span class="amount">${fmt(premio)}</span>
     </div>
     <div class="modal-calc-line">
-      <span class="desc">Kms (${n.km} km × 2 × ${KM_RATE}€)</span>
-      <span class="amount">${fmt(n.km_total)}</span>
+      <span class="desc">Kms (${km} km × 2 × ${KM_RATE}€)</span>
+      <span class="amount">${fmt(kmTotal)}</span>
     </div>
     <div class="modal-calc-line">
       <span class="desc">Subsídio de refeição${doubleMeal ? ' (×2)' : ''}</span>
-      <span class="amount">${fmt(n.meal_total)}</span>
+      <span class="amount">${fmt(mealTotal)}</span>
     </div>
     <div class="modal-total-line">
       <span class="label">Total</span>
-      <span class="amount">${fmt(n.total)}</span>
+      <span class="amount">${fmt(total)}</span>
     </div>`;
+}
 
-  document.getElementById('modal-overlay').classList.add('open');
+function previewModalCalc() {
+  const n = _listaCache.find(x => x.id === _modalId);
+  if (!n) return;
+  const km = parseFloat(document.getElementById('modal-km-input').value) || 0;
+  const fees = FEES[n.competition] || {};
+  const premio = fees[n.my_role] || 0;
+  const kmTotal = km * 2 * KM_RATE;
+  const doubleMeal = km > MEAL_KM_THRESHOLD;
+  const mealTotal = doubleMeal ? MEAL * 2 : MEAL;
+  renderModalCalc(n.my_role, n.competition, km, premio, kmTotal, mealTotal, premio + kmTotal + mealTotal);
+}
+
+async function saveModalKm() {
+  const n = _listaCache.find(x => x.id === _modalId);
+  if (!n) return;
+  const km = parseFloat(document.getElementById('modal-km-input').value) || 0;
+  const fees = FEES[n.competition] || {};
+  const premio = fees[n.my_role] || 0;
+  const kmTotal = km * 2 * KM_RATE;
+  const doubleMeal = km > MEAL_KM_THRESHOLD;
+  const mealTotal = doubleMeal ? MEAL * 2 : MEAL;
+  const total = premio + kmTotal + mealTotal;
+
+  const btn = document.querySelector('#modal .btn-primary');
+  btn.textContent = 'A guardar...';
+  btn.disabled = true;
+
+  const { error } = await db.from('nomeacoes').update({ km, km_total: kmTotal, meal_total: mealTotal, total }).eq('id', _modalId);
+
+  btn.textContent = 'Guardar';
+  btn.disabled = false;
+
+  if (error) { alert('Erro: ' + error.message); return; }
+
+  renderModalCalc(n.my_role, n.competition, km, premio, kmTotal, mealTotal, total);
+  renderLista();
 }
 
 function closeModal(e) {
