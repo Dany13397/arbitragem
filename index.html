@@ -728,8 +728,10 @@ const MEAL = 17.50;
 const MEAL_KM_THRESHOLD = 150;
 
 const FEES = {
-  LP: { '1A': 300, '2A': 300, '3A': 150, 'CRON': 120 }
+  LP: { '1A': 300, '2A': 300, '3A': 150, '4A': 150, 'CRON': 120 }
 };
+
+const MY_SURNAME = 'Garcez';
 
 // ──────────────────────────────────────────────
 // STATE
@@ -743,12 +745,11 @@ function parseSMSText(sms) {
   const raw = sms.trim();
   const result = { raw };
 
-  // Role: starts with personal code → 1A
-  result.myRole = raw.startsWith(MY_CODE) ? '1A' : null;
-
-  // Game ID: second token if starts with code, else first
+  // Role: starts with personal code → 1A, otherwise find by surname
   const tokens = raw.split(/\s+/);
-  result.gameId = result.myRole ? tokens[1] : tokens[0];
+  const isMainRef = raw.startsWith(MY_CODE);
+  result.myRole = isMainRef ? '1A' : null;
+  result.gameId = isMainRef ? tokens[1] : tokens[0];
 
   // Competition: between first # and second #
   const compMatch = raw.match(/#([^#]+)#/);
@@ -782,6 +783,16 @@ function parseSMSText(sms) {
   const afterDT = dtMatch ? afterThird.slice(afterThird.indexOf(dtMatch[0]) + dtMatch[0].length).trim() : '';
 
   result.officials = parseOfficials(afterDT, result.myRole);
+
+  // If not 1A, find role by surname in officials list
+  if (!result.myRole) {
+    const me = result.officials.find(o => o.name.toLowerCase().includes(MY_SURNAME.toLowerCase()));
+    if (me) {
+      result.myRole = me.role;
+      me.isMe = true;
+      me.name = MY_NAME;
+    }
+  }
 
   return result;
 }
