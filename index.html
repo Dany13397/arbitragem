@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Árbitro Futsal — Nomeações</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #4f7fff;
+      --accent2: #7c3aed;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --text: #e8eaf6;
+      --muted: #8892b0;
+      --radius: 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header .logo {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+
+    header .sub {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    header .tabs {
+      margin-left: auto;
+      display: flex;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      background: none;
+      border: 1px solid transparent;
+      color: var(--muted);
+      padding: 6px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all .15s;
+    }
+
+    .tab-btn.active {
+      background: var(--surface2);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .tab-btn:hover:not(.active) { color: var(--text); }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 24px; }
+
+    /* ── PAGE VIEWS ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── NOVA NOMEAÇÃO ── */
+    .sms-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .sms-box label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin-bottom: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 12px;
+      font-family: 'Consolas', monospace;
+      font-size: 13px;
+      resize: vertical;
+      min-height: 80px;
+      outline: none;
+      transition: border-color .15s;
+    }
+
+    textarea:focus { border-color: var(--accent); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: opacity .15s;
+    }
+
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-success { background: var(--green); color: #fff; }
+    .btn-danger  { background: var(--red); color: #fff; }
+    .btn-ghost   { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+    .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+    /* ── PARSED CARD ── */
+    .parsed-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .parsed-card .card-header {
+      background: var(--surface2);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+
+    .badge-lp   { background: #1d3461; color: #7bb3ff; }
+    .badge-role { background: #1a2e1a; color: var(--green); }
+
+    .card-body { padding: 20px; }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .detail-item label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      margin-bottom: 4px;
+    }
+
+    .detail-item .val {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .teams {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .teams .vs { color: var(--muted); font-weight: 400; font-size: 13px; margin: 0 8px; }
+
+    /* ── ÁRBITROS TABLE ── */
+    .officials-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    .officials-table th {
+      text-align: left;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .officials-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .officials-table tr:last-child td { border-bottom: none; }
+    .officials-table tr.me td { background: rgba(79,127,255,.07); }
+
+    .role-tag {
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    /* ── CÁLCULO ── */
+    .calc-section {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .calc-section h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .km-input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .km-input-row input[type=number] {
+      width: 120px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 12px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .km-input-row input[type=number]:focus { border-color: var(--accent); }
+
+    .km-input-row label { color: var(--muted); font-size: 13px; }
+
+    .calc-breakdown {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .calc-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: var(--surface);
+      border-radius: 6px;
+    }
+
+    .calc-line .desc { color: var(--muted); font-size: 13px; }
+    .calc-line .amount { font-weight: 600; font-family: 'Consolas', monospace; }
+
+    .calc-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: rgba(79,127,255,.12);
+      border: 1px solid rgba(79,127,255,.3);
+      border-radius: 8px;
+    }
+
+    .calc-total .label { font-weight: 600; font-size: 14px; }
+    .calc-total .total-amount { font-size: 22px; font-weight: 700; color: var(--accent); font-family: 'Consolas', monospace; }
+
+    .warning-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(245,158,11,.1);
+      border: 1px solid rgba(245,158,11,.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      color: var(--yellow);
+      font-size: 13px;
+    }
+
+    /* ── LISTA DE NOMEAÇÕES ── */
+    .nomeacoes-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .nomeacoes-header h2 { font-size: 18px; font-weight: 700; }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .stat-card .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 6px; }
+    .stat-card .stat-value { font-size: 24px; font-weight: 700; font-family: 'Consolas', monospace; color: var(--accent); }
+
+    .nomeacao-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+
+    .nomeacao-item:hover { border-color: var(--accent); }
+
+    .nomeacao-item .date-col {
+      min-width: 90px;
+      text-align: center;
+    }
+
+    .nomeacao-item .date-col .day { font-size: 22px; font-weight: 700; line-height: 1; }
+    .nomeacao-item .date-col .month { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    .nomeacao-item .date-col .time { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .nomeacao-item .info-col { flex: 1; }
+    .nomeacao-item .teams-row { font-weight: 600; font-size: 15px; }
+    .nomeacao-item .meta-row { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .nomeacao-item .amount-col { text-align: right; }
+    .nomeacao-item .amount-col .total { font-size: 18px; font-weight: 700; font-family: 'Consolas', monospace; color: var(--green); }
+    .nomeacao-item .amount-col .comp { font-size: 11px; color: var(--muted); }
+
+    .nomeacao-item .del-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      border-radius: 4px;
+      transition: color .15s;
+    }
+
+    .nomeacao-item .del-btn:hover { color: var(--red); }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+    .pending-badge {
+      display: inline-block;
+      background: rgba(245,158,11,.2);
+      color: var(--yellow);
+      border: 1px solid rgba(245,158,11,.3);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .done-badge {
+      display: inline-block;
+      background: rgba(34,197,94,.15);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,.25);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">⚽ Árbitro Futsal</div>
+    <div class="sub">Gestão de Nomeações — Dany Garcez</div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showView('nova')">Nova Nomeação</button>
+    <button class="tab-btn" onclick="showView('lista')">Nomeações</button>
+  </div>
+</header>
+
+<!-- ══════════════════ NOVA NOMEAÇÃO ══════════════════ -->
+<div class="view active" id="view-nova">
+  <div class="container">
+
+    <div class="sms-box">
+      <label>Colar SMS de Nomeação</label>
+      <textarea id="sms-input" placeholder="Cola aqui a mensagem SMS recebida..."></textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="parseSMS()">▶ Processar SMS</button>
+        <button class="btn btn-ghost" onclick="clearSMS()">Limpar</button>
+      </div>
+    </div>
+
+    <div id="parsed-result" style="display:none;">
+
+      <div class="parsed-card">
+        <div class="card-header">
+          <span id="badge-comp" class="badge badge-lp">LP</span>
+          <span id="badge-role" class="badge badge-role">1A</span>
+          <span id="header-id" style="color:var(--muted); font-size:12px; font-family:monospace; margin-left:4px;"></span>
+        </div>
+
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="detail-item" style="grid-column: span 2;">
+              <label>Jogo</label>
+              <div class="teams" id="detail-teams"></div>
+            </div>
+            <div class="detail-item">
+              <label>Data</label>
+              <div class="val" id="detail-date"></div>
+            </div>
+            <div class="detail-item">
+              <label>Hora</label>
+              <div class="val" id="detail-time"></div>
+            </div>
+            <div class="detail-item" style="grid-column: span 2;">
+              <label>Pavilhão</label>
+              <div class="val" id="detail-venue"></div>
+            </div>
+            <div class="detail-item">
+              <label>Local</label>
+              <div class="val" id="detail-location"></div>
+            </div>
+          </div>
+
+          <table class="officials-table">
+            <thead>
+              <tr>
+                <th>Função</th>
+                <th>Nome</th>
+                <th>Telemóvel</th>
+              </tr>
+            </thead>
+            <tbody id="officials-body"></tbody>
+          </table>
+
+          <!-- CÁLCULO -->
+          <div class="calc-section">
+            <h3>Cálculo de Honorários</h3>
+
+            <div class="km-input-row">
+              <label>Distância Braga → Pavilhão:</label>
+              <input type="number" id="km-input" placeholder="0" min="0" oninput="recalculate()">
+              <span style="color:var(--muted);">km</span>
+            </div>
+
+            <div id="double-meal-warning" class="warning-box" style="display:none;">
+              ⚠️ Distância superior a 150 km — 2 subsídios de refeição aplicados.
+            </div>
+
+            <div class="calc-breakdown" id="calc-breakdown"></div>
+
+            <div class="calc-total">
+              <div class="label">Total a receber</div>
+              <div class="total-amount" id="calc-total-amount">—</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-success" onclick="saveNomeacao()">💾 Guardar Nomeação</button>
+        <button class="btn btn-ghost" onclick="clearSMS()">Cancelar</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ LISTA ══════════════════ -->
+<div class="view" id="view-lista">
+  <div class="container">
+    <div class="nomeacoes-header">
+      <h2>Nomeações</h2>
+    </div>
+
+    <div class="stats-row" id="stats-row"></div>
+
+    <div id="lista-content"></div>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────
+// SUPABASE
+// ──────────────────────────────────────────────
+const { createClient } = supabase;
+const db = createClient(
+  'https://adswzjlhxxkqqhdhjodo.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkc3d6amxoeHhrcXFoZGhqb2RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MTk1NTgsImV4cCI6MjA5NjQ5NTU1OH0.x4R7Pev8rQmYzUKmnV4kwaZGJgyDiuolt47kN1FPjx0'
+);
+
+// ──────────────────────────────────────────────
+// CONFIG
+// ──────────────────────────────────────────────
+const MY_CODE = '1997';
+const MY_NAME = 'Dany Garcez';
+const KM_RATE = 0.36;
+const MEAL = 17.50;
+const MEAL_KM_THRESHOLD = 150;
+
+const FEES = {
+  LP: { '1A': 300, '2A': 300, '3A': 150, 'CRON': 120 }
+};
+
+// ──────────────────────────────────────────────
+// STATE
+// ──────────────────────────────────────────────
+let currentParsed = null;
+
+// ──────────────────────────────────────────────
+// PARSER
+// ──────────────────────────────────────────────
+function parseSMSText(sms) {
+  const raw = sms.trim();
+  const result = { raw };
+
+  // Role: starts with personal code → 1A
+  result.myRole = raw.startsWith(MY_CODE) ? '1A' : null;
+
+  // Game ID: second token if starts with code, else first
+  const tokens = raw.split(/\s+/);
+  result.gameId = result.myRole ? tokens[1] : tokens[0];
+
+  // Competition: between first # and second #
+  const compMatch = raw.match(/#([^#]+)#/);
+  result.competition = compMatch ? compMatch[1] : '?';
+
+  // Teams: between second # and third #
+  const teamsMatch = raw.match(/#[^#]+#([^#]+)#/);
+  if (teamsMatch) {
+    const parts = teamsMatch[1].split('*');
+    result.homeTeam = parts[0]?.trim();
+    result.awayTeam = parts[1]?.trim();
+  }
+
+  // After third #: venue, location, date, officials
+  const afterThird = raw.split('#').slice(3).join('#');
+
+  // Venue: after PAV until <
+  const venueMatch = afterThird.match(/PAV\s+([^<]+)</i);
+  result.venue = venueMatch ? venueMatch[1].trim() : '?';
+
+  // Location: between < and >
+  const locMatch = afterThird.match(/<([^>]+)>/);
+  result.location = locMatch ? locMatch[1].trim() : '?';
+
+  // Date & time
+  const dtMatch = afterThird.match(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2})/);
+  result.date = dtMatch ? dtMatch[1] : '?';
+  result.time = dtMatch ? dtMatch[2] : '?';
+
+  // Officials string: everything after the time
+  const afterDT = dtMatch ? afterThird.slice(afterThird.indexOf(dtMatch[0]) + dtMatch[0].length).trim() : '';
+
+  result.officials = parseOfficials(afterDT, result.myRole);
+
+  return result;
+}
+
+function parseOfficials(str, myRole) {
+  const officials = [];
+
+  // Add self as 1A if that's our role
+  if (myRole === '1A') {
+    officials.push({ role: '1A', name: MY_NAME, phone: '', isMe: true });
+  }
+
+  // Patterns: 2A-B, 3A-C, CRO-J, CRO-A, etc.
+  // Name and phone are concatenated: NAME963977776
+  const pattern = /(\d[A-Z]-[A-Z]|CRO-[A-Z])\s+([A-Za-zÀ-ÿ]+)(\d{9})/g;
+  let m;
+  while ((m = pattern.exec(str)) !== null) {
+    const roleRaw = m[1];
+    const name = m[2];
+    const phone = m[3];
+
+    let role;
+    if (roleRaw.startsWith('2A')) role = '2A';
+    else if (roleRaw.startsWith('3A')) role = '3A';
+    else if (roleRaw.startsWith('CRO')) role = 'CRON';
+    else role = roleRaw;
+
+    officials.push({ role, name: capitalize(name), phone, isMe: false });
+  }
+
+  return officials;
+}
+
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
+// ──────────────────────────────────────────────
+// RENDER PARSED
+// ──────────────────────────────────────────────
+function parseSMS() {
+  const sms = document.getElementById('sms-input').value;
+  if (!sms.trim()) return;
+
+  currentParsed = parseSMSText(sms);
+
+  document.getElementById('badge-comp').textContent = currentParsed.competition;
+  document.getElementById('badge-role').textContent = currentParsed.myRole || '?';
+  document.getElementById('header-id').textContent = '#' + currentParsed.gameId;
+  document.getElementById('detail-teams').innerHTML =
+    `${currentParsed.homeTeam} <span class="vs">vs</span> ${currentParsed.awayTeam}`;
+  document.getElementById('detail-date').textContent = currentParsed.date;
+  document.getElementById('detail-time').textContent = currentParsed.time;
+  document.getElementById('detail-venue').textContent = 'Pav. ' + currentParsed.venue;
+  document.getElementById('detail-location').textContent = currentParsed.location;
+
+  const tbody = document.getElementById('officials-body');
+  tbody.innerHTML = '';
+  currentParsed.officials.forEach(o => {
+    const tr = document.createElement('tr');
+    if (o.isMe) tr.classList.add('me');
+    tr.innerHTML = `
+      <td><span class="role-tag">${o.role}</span></td>
+      <td>${o.isMe ? '<strong>' + o.name + '</strong>' : o.name}</td>
+      <td style="font-family:monospace; color:var(--muted)">${o.phone || '—'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('km-input').value = '';
+  recalculate();
+
+  document.getElementById('parsed-result').style.display = 'block';
+}
+
+function recalculate() {
+  if (!currentParsed) return;
+
+  const km = parseFloat(document.getElementById('km-input').value) || 0;
+  const comp = currentParsed.competition;
+  const role = currentParsed.myRole;
+
+  const fees = FEES[comp];
+  const premio = fees && role ? (fees[role] || 0) : 0;
+  const kmTotal = km * 2 * KM_RATE;
+  const doubleMeal = km > MEAL_KM_THRESHOLD;
+  const mealTotal = doubleMeal ? MEAL * 2 : MEAL;
+  const total = premio + kmTotal + mealTotal;
+
+  document.getElementById('double-meal-warning').style.display = doubleMeal ? 'flex' : 'none';
+
+  const breakdown = document.getElementById('calc-breakdown');
+  breakdown.innerHTML = `
+    <div class="calc-line">
+      <span class="desc">Prémio de jogo (${role} — ${comp})</span>
+      <span class="amount">${fmt(premio)}</span>
+    </div>
+    <div class="calc-line">
+      <span class="desc">Kms (${km} km × 2 × ${KM_RATE}€)</span>
+      <span class="amount">${fmt(kmTotal)}</span>
+    </div>
+    <div class="calc-line">
+      <span class="desc">Subsídio de refeição${doubleMeal ? ' (×2)' : ''}</span>
+      <span class="amount">${fmt(mealTotal)}</span>
+    </div>
+  `;
+
+  currentParsed._km = km;
+  currentParsed._premio = premio;
+  currentParsed._kmTotal = kmTotal;
+  currentParsed._mealTotal = mealTotal;
+  currentParsed._total = total;
+
+  document.getElementById('calc-total-amount').textContent = fmt(total);
+}
+
+function fmt(v) {
+  return v.toFixed(2).replace('.', ',') + ' €';
+}
+
+// ──────────────────────────────────────────────
+// SAVE
+// ──────────────────────────────────────────────
+async function saveNomeacao() {
+  if (!currentParsed) return;
+  const btn = document.querySelector('.btn-success');
+  btn.textContent = 'A guardar...';
+  btn.disabled = true;
+
+  const { error } = await db.from('nomeacoes').insert({
+    game_id: currentParsed.gameId,
+    competition: currentParsed.competition,
+    home_team: currentParsed.homeTeam,
+    away_team: currentParsed.awayTeam,
+    venue: currentParsed.venue,
+    location: currentParsed.location,
+    date: currentParsed.date,
+    time: currentParsed.time,
+    my_role: currentParsed.myRole,
+    officials: currentParsed.officials,
+    km: currentParsed._km || 0,
+    premio: currentParsed._premio || 0,
+    km_total: currentParsed._kmTotal || 0,
+    meal_total: currentParsed._mealTotal || 0,
+    total: currentParsed._total || 0,
+    raw: currentParsed.raw
+  });
+
+  if (error) {
+    alert('Erro ao guardar: ' + error.message);
+    btn.textContent = '💾 Guardar Nomeação';
+    btn.disabled = false;
+    return;
+  }
+
+  clearSMS();
+  showView('lista');
+}
+
+function clearSMS() {
+  document.getElementById('sms-input').value = '';
+  document.getElementById('parsed-result').style.display = 'none';
+  currentParsed = null;
+}
+
+// ──────────────────────────────────────────────
+// LISTA
+// ──────────────────────────────────────────────
+async function renderLista() {
+  const cont = document.getElementById('lista-content');
+  cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">A carregar...</div>';
+
+  const { data: list, error } = await db
+    .from('nomeacoes')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    cont.innerHTML = `<div style="text-align:center;padding:40px;color:var(--red);">Erro ao carregar: ${error.message}</div>`;
+    return;
+  }
+
+  const today = new Date();
+  const totalEur = list.reduce((s, n) => s + (n.total || 0), 0);
+  const upcoming = list.filter(n => parseDate(n.date) >= today).length;
+  const past = list.filter(n => parseDate(n.date) < today).length;
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Total Nomeações</div>
+      <div class="stat-value">${list.length}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">A realizar</div>
+      <div class="stat-value">${upcoming}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Realizados</div>
+      <div class="stat-value">${past}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total a receber</div>
+      <div class="stat-value" style="font-size:18px;">${fmt(totalEur)}</div>
+    </div>
+  `;
+
+  if (list.length === 0) {
+    cont.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <div>Ainda não tens nomeações guardadas.</div>
+        <div style="margin-top:8px; font-size:13px;">Cola uma SMS para começar.</div>
+      </div>`;
+    return;
+  }
+
+  cont.innerHTML = list.map(n => {
+    const d = parseDate(n.date);
+    const isPast = d < today;
+    const dayNum = n.date.split('/')[0];
+    const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const monthStr = monthNames[parseInt(n.date.split('/')[1]) - 1] || '';
+    return `
+      <div class="nomeacao-item">
+        <div class="date-col">
+          <div class="day">${dayNum}</div>
+          <div class="month">${monthStr}</div>
+          <div class="time">${n.time}</div>
+        </div>
+        <div class="info-col">
+          <div class="teams-row">${n.home_team} <span style="color:var(--muted); font-weight:400">vs</span> ${n.away_team}</div>
+          <div class="meta-row">
+            <span class="badge badge-lp" style="font-size:10px;">${n.competition}</span>
+            &nbsp;Pav. ${n.venue} · ${n.location}
+          </div>
+        </div>
+        <div class="amount-col">
+          <div class="total">${fmt(n.total)}</div>
+          <div class="comp" style="margin-top:4px;">${isPast ? '<span class="done-badge">Realizado</span>' : '<span class="pending-badge">Pendente</span>'}</div>
+        </div>
+        <button class="del-btn" onclick="deleteNomeacao(event, ${n.id})">✕</button>
+      </div>`;
+  }).join('');
+}
+
+function parseDate(str) {
+  const [d, m, y] = str.split('/');
+  return new Date(y, m - 1, d);
+}
+
+async function deleteNomeacao(e, id) {
+  e.stopPropagation();
+  if (!confirm('Remover esta nomeação?')) return;
+  const { error } = await db.from('nomeacoes').delete().eq('id', id);
+  if (error) { alert('Erro ao remover: ' + error.message); return; }
+  renderLista();
+}
+
+// ──────────────────────────────────────────────
+// NAVIGATION
+// ──────────────────────────────────────────────
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn')[name === 'nova' ? 0 : 1].classList.add('active');
+  if (name === 'lista') renderLista();
+}
+</script>
+</body>
+</html>
