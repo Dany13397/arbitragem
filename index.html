@@ -838,7 +838,8 @@ function parseOfficials(str, myRole) {
       ? segment.slice(0, phoneMatch.index)
       : segment;
 
-    const name = namePart.trim().replace(/\s+/g, ' ');
+    const posLetter = marker.roleRaw.split('-')[1];
+    const name = (posLetter + ' ' + namePart.trim()).replace(/\s+/g, ' ').trim();
 
     const { roleRaw } = marker;
     let role;
