@@ -740,7 +740,8 @@ const MEAL = 17.50;
 const MEAL_KM_THRESHOLD = 150;
 
 const FEES = {
-  LP: { '1A': 300, '2A': 300, '3A': 150, '4A': 150, 'CRON': 120 }
+  LP:        { '1A': 300, '2A': 300, '3A': 150, '4A': 150, 'CRON': 120 },
+  'CN 2D FTS': { '1A': 150, '2A': 150, '3A': 75,  '4A': 75,  'CRON': 60  }
 };
 
 const MY_SURNAME = 'Garcez';
@@ -812,20 +813,34 @@ function parseSMSText(sms) {
 function parseOfficials(str, myRole) {
   const officials = [];
 
-  // Add self as 1A if that's our role
   if (myRole === '1A') {
     officials.push({ role: '1A', name: MY_NAME, phone: '', isMe: true });
   }
 
-  // Patterns: 2A-B, 3A-C, CRO-J, CRO-A, etc.
-  // Name and phone are concatenated: NAME963977776
-  const pattern = /(\d[A-Z]-[A-Z]|CRO-[A-Z])\s+([A-Za-zÀ-ÿ]+)(\d{9})/g;
+  // Find all role markers and their positions
+  const markerRe = /(\d[A-Z]-[A-Z]|CRO-[A-Z])/g;
+  const markers = [];
   let m;
-  while ((m = pattern.exec(str)) !== null) {
-    const roleRaw = m[1];
-    const name = m[2];
-    const phone = m[3];
+  while ((m = markerRe.exec(str)) !== null) {
+    markers.push({ roleRaw: m[1], start: m.index, end: m.index + m[0].length });
+  }
 
+  markers.forEach((marker, i) => {
+    // Extract segment between this marker and the next (or end of string)
+    const segment = i < markers.length - 1
+      ? str.slice(marker.end, markers[i + 1].start)
+      : str.slice(marker.end);
+
+    // Phone = last 9 digits in segment
+    const phoneMatch = segment.match(/(\d{9})\D*$/);
+    const phone = phoneMatch ? phoneMatch[1] : '';
+    const namePart = phoneMatch
+      ? segment.slice(0, phoneMatch.index)
+      : segment;
+
+    const name = namePart.trim().replace(/\s+/g, ' ');
+
+    const { roleRaw } = marker;
     let role;
     if (roleRaw.startsWith('2A')) role = '2A';
     else if (roleRaw.startsWith('3A')) role = '3A';
@@ -833,15 +848,16 @@ function parseOfficials(str, myRole) {
     else if (roleRaw.startsWith('CRO')) role = 'CRON';
     else role = roleRaw;
 
-    officials.push({ role, name: capitalize(name), phone, isMe: false });
-  }
+    officials.push({ role, name: capitalizeName(name), phone, isMe: false });
+  });
 
   return officials;
 }
 
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+function capitalizeName(str) {
+  return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
+
 
 // ──────────────────────────────────────────────
 // RENDER PARSED
