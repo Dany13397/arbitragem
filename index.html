@@ -590,6 +590,12 @@
             </div>
           </div>
 
+          <!-- Campo 1A quando não sou o principal -->
+          <div id="ref1a-row" style="display:none; margin-bottom:16px;">
+            <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;">Árbitro Principal (1A)</label>
+            <input type="text" id="ref1a-input" placeholder="Nome do 1A..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-size:14px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+
           <table class="officials-table">
             <thead>
               <tr>
@@ -863,6 +869,8 @@ function parseSMS() {
   });
 
   document.getElementById('km-input').value = '';
+  document.getElementById('ref1a-input').value = '';
+  document.getElementById('ref1a-row').style.display = currentParsed.myRole !== '1A' ? 'block' : 'none';
   recalculate();
 
   document.getElementById('parsed-result').style.display = 'block';
@@ -922,6 +930,13 @@ async function saveNomeacao() {
   btn.textContent = 'A guardar...';
   btn.disabled = true;
 
+  // Prepend 1A to officials if we're not the main ref
+  const officials = [...currentParsed.officials];
+  if (currentParsed.myRole !== '1A') {
+    const ref1aName = document.getElementById('ref1a-input').value.trim();
+    officials.unshift({ role: '1A', name: ref1aName || '—', phone: '', isMe: false });
+  }
+
   const { error } = await db.from('nomeacoes').insert({
     game_id: currentParsed.gameId,
     competition: currentParsed.competition,
@@ -932,7 +947,7 @@ async function saveNomeacao() {
     date: currentParsed.date,
     time: currentParsed.time,
     my_role: currentParsed.myRole,
-    officials: currentParsed.officials,
+    officials: officials,
     km: currentParsed._km || 0,
     premio: currentParsed._premio || 0,
     km_total: currentParsed._kmTotal || 0,
