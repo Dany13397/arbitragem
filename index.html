@@ -848,7 +848,7 @@ function parseOfficials(str, myRole) {
     else if (roleRaw.startsWith('CRO')) role = 'CRON';
     else role = roleRaw;
 
-    officials.push({ role, name: capitalizeName(name), phone, isMe: false });
+    officials.push({ role, name, phone, isMe: false });
   });
 
   return officials;
