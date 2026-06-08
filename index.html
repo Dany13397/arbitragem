@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Árbitro Futsal — Nomeações</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -529,6 +530,97 @@
 
     .modal-total-line .label { font-weight: 600; }
     .modal-total-line .amount { font-size: 20px; font-weight: 700; color: var(--accent); font-family: 'Consolas', monospace; }
+    /* ── STATS ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .big-stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .big-stat .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 6px; }
+    .big-stat .value { font-size: 28px; font-weight: 700; font-family: 'Consolas', monospace; color: var(--accent); }
+    .big-stat .sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stats-section { margin-bottom: 32px; }
+
+    .chart-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .breakdown-bars { display: flex; flex-direction: column; gap: 10px; }
+
+    .breakdown-bar-row { display: flex; align-items: center; gap: 12px; }
+    .breakdown-bar-row .bar-label { width: 110px; font-size: 12px; color: var(--muted); text-align: right; flex-shrink: 0; }
+    .breakdown-bar-row .bar-track { flex: 1; height: 10px; background: var(--surface2); border-radius: 10px; overflow: hidden; }
+    .breakdown-bar-row .bar-fill  { height: 100%; border-radius: 10px; transition: width .4s; }
+    .breakdown-bar-row .bar-value { width: 80px; font-size: 12px; font-family: 'Consolas', monospace; text-align: right; flex-shrink: 0; }
+
+    .comp-list { display: flex; flex-direction: column; gap: 8px; }
+    .comp-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+    .comp-row .comp-name { flex: 1; font-size: 13px; }
+    .comp-row .comp-count { font-family: 'Consolas', monospace; font-size: 13px; color: var(--accent); }
+    .comp-row .comp-total { font-family: 'Consolas', monospace; font-size: 13px; color: var(--green); }
+
+    .colleague-list { display: flex; flex-direction: column; gap: 8px; }
+    .colleague-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+    .colleague-row .col-name { flex: 1; font-size: 13px; }
+    .colleague-row .col-count { font-family: 'Consolas', monospace; font-size: 13px; color: var(--accent); }
+    .colleague-row .col-bar { width: 80px; height: 6px; background: var(--surface2); border-radius: 6px; overflow: hidden; }
+    .colleague-row .col-bar-fill { height: 100%; background: var(--accent); border-radius: 6px; }
+
+    .location-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .location-pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .location-pill .loc-count { color: var(--accent); font-weight: 700; font-family: 'Consolas', monospace; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -541,6 +633,7 @@
   <div class="tabs">
     <button class="tab-btn active" onclick="showView('nova')">Nova Nomeação</button>
     <button class="tab-btn" onclick="showView('lista')">Nomeações</button>
+    <button class="tab-btn" onclick="showView('stats')">Estatísticas</button>
   </div>
 </header>
 
@@ -649,6 +742,51 @@
     </div>
     <div class="stats-row" id="stats-row"></div>
     <div id="lista-content"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ ESTATÍSTICAS ══════════════════ -->
+<div class="view" id="view-stats">
+  <div class="container">
+
+    <div class="stats-section">
+      <div class="section-title">Resumo Financeiro</div>
+      <div class="stats-grid" id="s-finance-cards"></div>
+      <div class="chart-box">
+        <div class="breakdown-bars" id="s-breakdown"></div>
+      </div>
+    </div>
+
+    <div class="stats-section">
+      <div class="section-title">Atividade</div>
+      <div class="chart-box" style="margin-bottom:16px;">
+        <canvas id="s-chart-months" height="100"></canvas>
+      </div>
+      <div class="comp-list" id="s-comp-list"></div>
+    </div>
+
+    <div class="stats-section">
+      <div class="section-title">Deslocações</div>
+      <div class="two-col" style="margin-bottom:16px;">
+        <div class="chart-box" style="text-align:center;">
+          <div class="label" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;">Total de Kms</div>
+          <div id="s-total-km" style="font-size:36px;font-weight:700;font-family:Consolas,monospace;color:var(--accent);"></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">km percorridos</div>
+        </div>
+        <div class="chart-box" style="text-align:center;">
+          <div class="label" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;">Média por Jogo</div>
+          <div id="s-avg-km" style="font-size:36px;font-weight:700;font-family:Consolas,monospace;color:var(--accent);"></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">km em média</div>
+        </div>
+      </div>
+      <div class="location-list" id="s-locations"></div>
+    </div>
+
+    <div class="stats-section">
+      <div class="section-title">Colegas de Equipa</div>
+      <div class="colleague-list" id="s-colleagues"></div>
+    </div>
+
   </div>
 </div>
 
@@ -1222,14 +1360,162 @@ async function deleteNomeacao(e, id) {
 }
 
 // ──────────────────────────────────────────────
+// ESTATÍSTICAS
+// ──────────────────────────────────────────────
+let _monthChart = null;
+
+async function renderStats() {
+  if (!_listaCache.length) {
+    const { data, error } = await db.from('nomeacoes').select('*').order('created_at', { ascending: false });
+    if (!error) _listaCache = data;
+  }
+  const list = _listaCache;
+
+  // ── Resumo financeiro ──
+  const totalEur     = list.reduce((s, n) => s + (n.total || 0), 0);
+  const totalPremio  = list.reduce((s, n) => s + (n.premio || 0), 0);
+  const totalKmEur   = list.reduce((s, n) => s + (n.km_total || 0), 0);
+  const totalMeal    = list.reduce((s, n) => s + (n.meal_total || 0), 0);
+  const avgPerGame   = list.length ? totalEur / list.length : 0;
+
+  document.getElementById('s-finance-cards').innerHTML = `
+    <div class="big-stat">
+      <div class="label">Total Acumulado</div>
+      <div class="value">${fmt(totalEur)}</div>
+      <div class="sub">${list.length} jogo${list.length !== 1 ? 's' : ''}</div>
+    </div>
+    <div class="big-stat">
+      <div class="label">Média por Jogo</div>
+      <div class="value">${fmt(avgPerGame)}</div>
+    </div>
+    <div class="big-stat">
+      <div class="label">Prémios</div>
+      <div class="value">${fmt(totalPremio)}</div>
+      <div class="sub">${totalEur ? Math.round(totalPremio/totalEur*100) : 0}% do total</div>
+    </div>
+    <div class="big-stat">
+      <div class="label">Kms</div>
+      <div class="value">${fmt(totalKmEur)}</div>
+      <div class="sub">${totalEur ? Math.round(totalKmEur/totalEur*100) : 0}% do total</div>
+    </div>
+    <div class="big-stat">
+      <div class="label">Subsídios Refeição</div>
+      <div class="value">${fmt(totalMeal)}</div>
+      <div class="sub">${totalEur ? Math.round(totalMeal/totalEur*100) : 0}% do total</div>
+    </div>`;
+
+  const maxBreakdown = Math.max(totalPremio, totalKmEur, totalMeal, 1);
+  document.getElementById('s-breakdown').innerHTML = [
+    { label: 'Prémios', val: totalPremio, color: '#4f7fff' },
+    { label: 'Kms',     val: totalKmEur,  color: '#7c3aed' },
+    { label: 'Refeição',val: totalMeal,   color: '#22c55e' }
+  ].map(r => `
+    <div class="breakdown-bar-row">
+      <div class="bar-label">${r.label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(r.val/maxBreakdown*100)}%;background:${r.color}"></div></div>
+      <div class="bar-value">${fmt(r.val)}</div>
+    </div>`).join('');
+
+  // ── Jogos por mês ──
+  const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const monthMap = {};
+  list.forEach(n => {
+    const parts = n.date.split('/');
+    const key = parts[2] + '-' + parts[1];
+    monthMap[key] = (monthMap[key] || 0) + 1;
+  });
+  const sortedMonths = Object.keys(monthMap).sort();
+  const monthLabels = sortedMonths.map(k => {
+    const [y, m] = k.split('-');
+    return monthNames[parseInt(m)-1] + ' ' + y.slice(2);
+  });
+  const monthData = sortedMonths.map(k => monthMap[k]);
+
+  if (_monthChart) _monthChart.destroy();
+  const ctx = document.getElementById('s-chart-months').getContext('2d');
+  _monthChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: monthLabels,
+      datasets: [{
+        label: 'Jogos',
+        data: monthData,
+        backgroundColor: 'rgba(79,127,255,.7)',
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8892b0' }, grid: { color: '#2e3250' } },
+        y: { ticks: { color: '#8892b0', stepSize: 1 }, grid: { color: '#2e3250' }, beginAtZero: true }
+      }
+    }
+  });
+
+  // ── Jogos por competição ──
+  const compMap = {};
+  list.forEach(n => {
+    if (!compMap[n.competition]) compMap[n.competition] = { count: 0, total: 0 };
+    compMap[n.competition].count++;
+    compMap[n.competition].total += n.total || 0;
+  });
+  const sortedComps = Object.entries(compMap).sort((a,b) => b[1].count - a[1].count);
+  document.getElementById('s-comp-list').innerHTML = sortedComps.map(([comp, d]) => `
+    <div class="comp-row">
+      <span class="badge badge-lp">${comp}</span>
+      <span class="comp-name"></span>
+      <span class="comp-count">${d.count} jogo${d.count !== 1 ? 's' : ''}</span>
+      <span class="comp-total">${fmt(d.total)}</span>
+    </div>`).join('');
+
+  // ── Deslocações ──
+  const totalKm  = list.reduce((s, n) => s + (n.km || 0), 0);
+  const avgKm    = list.length ? Math.round(totalKm / list.length) : 0;
+  document.getElementById('s-total-km').textContent = totalKm.toLocaleString('pt');
+  document.getElementById('s-avg-km').textContent   = avgKm.toLocaleString('pt');
+
+  const locMap = {};
+  list.forEach(n => { if (n.location) locMap[n.location] = (locMap[n.location] || 0) + 1; });
+  const sortedLocs = Object.entries(locMap).sort((a,b) => b[1] - a[1]);
+  document.getElementById('s-locations').innerHTML = sortedLocs.map(([loc, cnt]) => `
+    <div class="location-pill">
+      <span>${loc}</span>
+      <span class="loc-count">${cnt}×</span>
+    </div>`).join('');
+
+  // ── Colegas de equipa ──
+  const colMap = {};
+  list.forEach(n => {
+    const officials = Array.isArray(n.officials) ? n.officials : [];
+    officials.forEach(o => {
+      if (!o.isMe && o.name && o.name !== '—') {
+        colMap[o.name] = (colMap[o.name] || 0) + 1;
+      }
+    });
+  });
+  const sortedCols = Object.entries(colMap).sort((a,b) => b[1] - a[1]).slice(0, 15);
+  const maxCol = sortedCols[0]?.[1] || 1;
+  document.getElementById('s-colleagues').innerHTML = sortedCols.map(([name, cnt]) => `
+    <div class="colleague-row">
+      <span class="col-name">${name}</span>
+      <div class="col-bar"><div class="col-bar-fill" style="width:${Math.round(cnt/maxCol*100)}%"></div></div>
+      <span class="col-count">${cnt}×</span>
+    </div>`).join('');
+}
+
+// ──────────────────────────────────────────────
 // NAVIGATION
 // ──────────────────────────────────────────────
 function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
-  document.querySelectorAll('.tab-btn')[name === 'nova' ? 0 : 1].classList.add('active');
+  const idx = { nova: 0, lista: 1, stats: 2 }[name] ?? 0;
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   if (name === 'lista') renderLista();
+  if (name === 'stats') renderStats();
 }
 </script>
 </body>
