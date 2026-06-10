@@ -6,7 +6,7 @@
   <title>Árbitro Futsal — Nomeações</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA3cTXpmsU9k5-TmyvT8y53fsnVQa6b3X0&callback=initMaps" async defer></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA3cTXpmsU9k5-TmyvT8y53fsnVQa6b3X0" defer></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -901,47 +901,38 @@ const HOME_ADDRESS = 'Rua de Santa Justa, 4705-353 Braga, Portugal';
 // ──────────────────────────────────────────────
 // GOOGLE MAPS
 // ──────────────────────────────────────────────
-let distanceService = null;
-
-function initMaps() {
-  distanceService = new google.maps.DistanceMatrixService();
+function getDistanceService() {
+  if (typeof google !== 'undefined' && google.maps) {
+    return new google.maps.DistanceMatrixService();
+  }
+  return null;
 }
 
 function calcDistance(venue, location) {
   return new Promise((resolve) => {
-    if (!distanceService) { resolve(null); return; }
+    const svc = getDistanceService();
+    if (!svc) { resolve(null); return; }
 
-    // Try with full venue name first, fallback to just location
-    const destinations = [
-      `${venue}, ${location}, Portugal`,
-      `${location}, Portugal`
-    ];
+    const tryQuery = (destination, cb) => {
+      svc.getDistanceMatrix({
+        origins: [HOME_ADDRESS],
+        destinations: [destination],
+        travelMode: google.maps.TravelMode.DRIVING,
+        unitSystem: google.maps.UnitSystem.METRIC,
+        region: 'pt'
+      }, (resp, status) => {
+        if (status === 'OK' && resp.rows[0].elements[0].status === 'OK') {
+          cb(Math.round(resp.rows[0].elements[0].distance.value / 1000));
+        } else {
+          cb(null);
+        }
+      });
+    };
 
-    distanceService.getDistanceMatrix({
-      origins: [HOME_ADDRESS],
-      destinations: [destinations[0]],
-      travelMode: google.maps.TravelMode.DRIVING,
-      unitSystem: google.maps.UnitSystem.METRIC,
-      region: 'pt'
-    }, (resp, status) => {
-      if (status === 'OK' && resp.rows[0].elements[0].status === 'OK') {
-        resolve(Math.round(resp.rows[0].elements[0].distance.value / 1000));
-      } else {
-        // Fallback: only location
-        distanceService.getDistanceMatrix({
-          origins: [HOME_ADDRESS],
-          destinations: [destinations[1]],
-          travelMode: google.maps.TravelMode.DRIVING,
-          unitSystem: google.maps.UnitSystem.METRIC,
-          region: 'pt'
-        }, (resp2, status2) => {
-          if (status2 === 'OK' && resp2.rows[0].elements[0].status === 'OK') {
-            resolve(Math.round(resp2.rows[0].elements[0].distance.value / 1000));
-          } else {
-            resolve(null);
-          }
-        });
-      }
+    // Tenta com pavilhão + localidade, fallback para só localidade
+    tryQuery(`${venue}, ${location}, Portugal`, (km) => {
+      if (km !== null) { resolve(km); return; }
+      tryQuery(`${location}, Portugal`, resolve);
     });
   });
 }
