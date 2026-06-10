@@ -6,7 +6,6 @@
   <title>Árbitro Futsal — Nomeações</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA3cTXpmsU9k5-TmyvT8y53fsnVQa6b3X0" defer></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -901,40 +900,27 @@ const HOME_ADDRESS = 'Rua de Santa Justa, 4705-353 Braga, Portugal';
 // ──────────────────────────────────────────────
 // GOOGLE MAPS
 // ──────────────────────────────────────────────
-function getDistanceService() {
-  if (typeof google !== 'undefined' && google.maps) {
-    return new google.maps.DistanceMatrixService();
-  }
-  return null;
-}
+const MAPS_KEY = 'AIzaSyA3cTXpmsU9k5-TmyvT8y53fsnVQa6b3X0';
 
-function calcDistance(venue, location) {
-  return new Promise((resolve) => {
-    const svc = getDistanceService();
-    if (!svc) { resolve(null); return; }
+async function calcDistance(venue, location) {
+  const tryFetch = async (destination) => {
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(HOME_ADDRESS)}&destinations=${encodeURIComponent(destination)}&mode=driving&region=pt&key=${MAPS_KEY}`;
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.status === 'OK' && data.rows[0].elements[0].status === 'OK') {
+        return Math.round(data.rows[0].elements[0].distance.value / 1000);
+      }
+    } catch (e) {
+      console.error('Maps fetch error:', e);
+    }
+    return null;
+  };
 
-    const tryQuery = (destination, cb) => {
-      svc.getDistanceMatrix({
-        origins: [HOME_ADDRESS],
-        destinations: [destination],
-        travelMode: google.maps.TravelMode.DRIVING,
-        unitSystem: google.maps.UnitSystem.METRIC,
-        region: 'pt'
-      }, (resp, status) => {
-        if (status === 'OK' && resp.rows[0].elements[0].status === 'OK') {
-          cb(Math.round(resp.rows[0].elements[0].distance.value / 1000));
-        } else {
-          cb(null);
-        }
-      });
-    };
-
-    // Tenta com pavilhão + localidade, fallback para só localidade
-    tryQuery(`${venue}, ${location}, Portugal`, (km) => {
-      if (km !== null) { resolve(km); return; }
-      tryQuery(`${location}, Portugal`, resolve);
-    });
-  });
+  // Tenta pavilhão + localidade, fallback para só localidade
+  const km = await tryFetch(`${venue}, ${location}, Portugal`);
+  if (km !== null) return km;
+  return await tryFetch(`${location}, Portugal`);
 }
 
 // ──────────────────────────────────────────────
@@ -1091,12 +1077,6 @@ function parseSMS() {
 
   // Calcular distância automaticamente
   const kmStatus = document.getElementById('km-status');
-
-  if (typeof google === 'undefined' || !google.maps) {
-    kmStatus.textContent = '⚠️ Maps não carregou — introduz manualmente';
-    console.error('Google Maps não está disponível');
-    return;
-  }
 
   kmStatus.textContent = '⏳ A calcular...';
 
