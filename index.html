@@ -900,24 +900,20 @@ const HOME_ADDRESS = 'Rua de Santa Justa, 4705-353 Braga, Portugal';
 // ──────────────────────────────────────────────
 // GOOGLE MAPS
 // ──────────────────────────────────────────────
-const MAPS_KEY = 'AIzaSyA3cTXpmsU9k5-TmyvT8y53fsnVQa6b3X0';
-
 async function calcDistance(venue, location) {
   const tryFetch = async (destination) => {
-    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(HOME_ADDRESS)}&destinations=${encodeURIComponent(destination)}&mode=driving&region=pt&key=${MAPS_KEY}`;
     try {
-      const res = await fetch(url);
+      const res = await fetch(`/api/distance?destination=${encodeURIComponent(destination)}`);
       const data = await res.json();
       if (data.status === 'OK' && data.rows[0].elements[0].status === 'OK') {
         return Math.round(data.rows[0].elements[0].distance.value / 1000);
       }
     } catch (e) {
-      console.error('Maps fetch error:', e);
+      console.error('Distance error:', e);
     }
     return null;
   };
 
-  // Tenta pavilhão + localidade, fallback para só localidade
   const km = await tryFetch(`${venue}, ${location}, Portugal`);
   if (km !== null) return km;
   return await tryFetch(`${location}, Portugal`);
