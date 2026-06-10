@@ -1082,8 +1082,9 @@ function parseSMS() {
   recalculate();
   document.getElementById('parsed-result').style.display = 'block';
 
-  // Calcular distância automaticamente
+  // Calcular distância automaticamente apenas quando sou 1A
   const kmStatus = document.getElementById('km-status');
+  if (currentParsed.myRole !== '1A') return;
 
   kmStatus.textContent = '⏳ A calcular...';
 
