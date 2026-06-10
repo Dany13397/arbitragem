@@ -901,10 +901,16 @@ const HOME_ADDRESS = 'Rua de Santa Justa, 4705-353 Braga, Portugal';
 // GOOGLE MAPS
 // ──────────────────────────────────────────────
 async function calcDistance(venue, location) {
+  // Normaliza texto: converte para Title Case para melhor geocodificação
+  const titleCase = str => str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  const v = titleCase(venue);
+  const l = titleCase(location);
+
   const tryFetch = async (destination) => {
     try {
       const res = await fetch(`/api/distance?destination=${encodeURIComponent(destination)}`);
       const data = await res.json();
+      console.log('Maps response for', destination, ':', data.status, data.rows?.[0]?.elements?.[0]?.status);
       if (data.status === 'OK' && data.rows[0].elements[0].status === 'OK') {
         return Math.round(data.rows[0].elements[0].distance.value / 1000);
       }
@@ -914,9 +920,14 @@ async function calcDistance(venue, location) {
     return null;
   };
 
-  const km = await tryFetch(`${venue}, ${location}, Portugal`);
-  if (km !== null) return km;
-  return await tryFetch(`${location}, Portugal`);
+  // Tentativas por ordem: pavilhão+local, só local, local+distrito implícito
+  const km1 = await tryFetch(`${v}, ${l}, Portugal`);
+  if (km1 !== null) return km1;
+
+  const km2 = await tryFetch(`${l}, Portugal`);
+  if (km2 !== null) return km2;
+
+  return null;
 }
 
 // ──────────────────────────────────────────────
