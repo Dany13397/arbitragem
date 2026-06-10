@@ -1293,6 +1293,7 @@ async function renderLista() {
             <div class="meta-row">
               <span class="badge badge-lp" style="font-size:10px;">${n.competition}</span>
               &nbsp;Pav. ${n.venue} · ${n.location}
+              ${n.my_role !== '1A' && (!n.km || n.km === 0) ? '&nbsp;<span style="background:rgba(239,68,68,.2);color:#ef4444;border:1px solid rgba(239,68,68,.4);padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;">⚠ kms</span>' : ''}
             </div>
           </div>
           <div class="amount-col">
