@@ -1508,10 +1508,6 @@ async function renderStats() {
       <div class="sub">${list.length} jogo${list.length !== 1 ? 's' : ''}</div>
     </div>
     <div class="big-stat">
-      <div class="label">Média por Jogo</div>
-      <div class="value">${fmt(avgPerGame)}</div>
-    </div>
-    <div class="big-stat">
       <div class="label">Prémios</div>
       <div class="value">${fmt(totalPremio)}</div>
       <div class="sub">${totalEur ? Math.round(totalPremio/totalEur*100) : 0}% do total</div>
