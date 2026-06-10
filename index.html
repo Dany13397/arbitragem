@@ -1090,16 +1090,34 @@ function parseSMS() {
   document.getElementById('parsed-result').style.display = 'block';
 
   // Calcular distância automaticamente
-  const status = document.getElementById('km-status');
-  status.textContent = '⏳ A calcular...';
+  const kmStatus = document.getElementById('km-status');
+
+  if (typeof google === 'undefined' || !google.maps) {
+    kmStatus.textContent = '⚠️ Maps não carregou — introduz manualmente';
+    console.error('Google Maps não está disponível');
+    return;
+  }
+
+  kmStatus.textContent = '⏳ A calcular...';
+
+  // Timeout de segurança: 8 segundos
+  const timeout = setTimeout(() => {
+    kmStatus.textContent = '⚠️ Timeout — introduz manualmente';
+  }, 8000);
+
   calcDistance(currentParsed.venue, currentParsed.location).then(km => {
+    clearTimeout(timeout);
     if (km !== null) {
       document.getElementById('km-input').value = km;
-      status.textContent = '✓ Google Maps';
+      kmStatus.textContent = '✓ Google Maps';
       recalculate();
     } else {
-      status.textContent = '⚠️ Não encontrado — introduz manualmente';
+      kmStatus.textContent = '⚠️ Não encontrado — introduz manualmente';
     }
+  }).catch(err => {
+    clearTimeout(timeout);
+    kmStatus.textContent = '⚠️ Erro — introduz manualmente';
+    console.error('Erro Maps:', err);
   });
 }
 
