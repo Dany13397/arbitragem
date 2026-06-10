@@ -4,7 +4,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'destination required' });
   }
 
-  const key = process.env.MAPS_KEY;
+  const key = process.env.MAPS_KEY || 'AIzaSyA3cTXpmsU9k5-TmyvT8y53fsnVQa6b3X0';
   const origin = 'Rua de Santa Justa, 4705-353 Braga, Portugal';
   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destination)}&mode=driving&region=pt&key=${key}`;
 
