@@ -6,6 +6,7 @@
   <title>Árbitro Futsal — Nomeações</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA3cTXpmsU9k5-TmyvT8y53fsnVQa6b3X0&callback=initMaps" async defer></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -708,6 +709,7 @@
               <label>Distância Braga → Pavilhão:</label>
               <input type="number" id="km-input" placeholder="0" min="0" oninput="recalculate()">
               <span style="color:var(--muted);">km</span>
+              <span id="km-status" style="font-size:12px;color:var(--muted);"></span>
             </div>
 
             <div id="double-meal-warning" class="warning-box" style="display:none;">
@@ -894,6 +896,55 @@ const FEES = {
 };
 
 const MY_SURNAME = 'Garcez';
+const HOME_ADDRESS = 'Rua de Santa Justa, 4705-353 Braga, Portugal';
+
+// ──────────────────────────────────────────────
+// GOOGLE MAPS
+// ──────────────────────────────────────────────
+let distanceService = null;
+
+function initMaps() {
+  distanceService = new google.maps.DistanceMatrixService();
+}
+
+function calcDistance(venue, location) {
+  return new Promise((resolve) => {
+    if (!distanceService) { resolve(null); return; }
+
+    // Try with full venue name first, fallback to just location
+    const destinations = [
+      `${venue}, ${location}, Portugal`,
+      `${location}, Portugal`
+    ];
+
+    distanceService.getDistanceMatrix({
+      origins: [HOME_ADDRESS],
+      destinations: [destinations[0]],
+      travelMode: google.maps.TravelMode.DRIVING,
+      unitSystem: google.maps.UnitSystem.METRIC,
+      region: 'pt'
+    }, (resp, status) => {
+      if (status === 'OK' && resp.rows[0].elements[0].status === 'OK') {
+        resolve(Math.round(resp.rows[0].elements[0].distance.value / 1000));
+      } else {
+        // Fallback: only location
+        distanceService.getDistanceMatrix({
+          origins: [HOME_ADDRESS],
+          destinations: [destinations[1]],
+          travelMode: google.maps.TravelMode.DRIVING,
+          unitSystem: google.maps.UnitSystem.METRIC,
+          region: 'pt'
+        }, (resp2, status2) => {
+          if (status2 === 'OK' && resp2.rows[0].elements[0].status === 'OK') {
+            resolve(Math.round(resp2.rows[0].elements[0].distance.value / 1000));
+          } else {
+            resolve(null);
+          }
+        });
+      }
+    });
+  });
+}
 
 // ──────────────────────────────────────────────
 // STATE
@@ -1045,8 +1096,20 @@ function parseSMS() {
   document.getElementById('ref1a-input').value = '';
   document.getElementById('ref1a-row').style.display = currentParsed.myRole !== '1A' ? 'block' : 'none';
   recalculate();
-
   document.getElementById('parsed-result').style.display = 'block';
+
+  // Calcular distância automaticamente
+  const status = document.getElementById('km-status');
+  status.textContent = '⏳ A calcular...';
+  calcDistance(currentParsed.venue, currentParsed.location).then(km => {
+    if (km !== null) {
+      document.getElementById('km-input').value = km;
+      status.textContent = '✓ Google Maps';
+      recalculate();
+    } else {
+      status.textContent = '⚠️ Não encontrado — introduz manualmente';
+    }
+  });
 }
 
 function recalculate() {
