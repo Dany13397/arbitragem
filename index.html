@@ -715,6 +715,68 @@
       header .sub { display: none; }
     }
 
+    /* ── SELETOR DE ÉPOCA / ANO CIVIL ── */
+    .period-selector {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .period-mode-toggle {
+      display: flex;
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .period-mode-btn {
+      flex: 1;
+      padding: 7px 12px;
+      border: none;
+      border-radius: 6px;
+      background: none;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: all .15s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .period-mode-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 1px 4px rgba(0,0,0,.35);
+    }
+
+    .period-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .period-chip {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'Consolas', monospace;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: all .15s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .period-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
     /* ── OFFLINE BANNER ── */
     .offline-banner {
       display: none;
@@ -984,6 +1046,8 @@
     <div class="nomeacoes-header">
       <h2>Nomeações</h2>
     </div>
+    <div class="period-selector" id="period-selector-lista"></div>
+
     <div class="filter-bar">
       <div class="filter-search-wrap">
         <span class="search-icon">🔍</span>
@@ -1020,6 +1084,8 @@
 <!-- ══════════════════ ESTATÍSTICAS ══════════════════ -->
 <div class="view" id="view-stats">
   <div class="container">
+
+    <div class="period-selector" id="period-selector-stats"></div>
 
     <div class="stats-section">
       <div class="section-title">Resumo Financeiro</div>
@@ -1495,6 +1561,84 @@ function clearSMS() {
 }
 
 // ──────────────────────────────────────────────
+// ÉPOCA / ANO CIVIL
+// ──────────────────────────────────────────────
+function getCurrentSeason() {
+  const now = new Date();
+  const m = now.getMonth() + 1;
+  const y = now.getFullYear();
+  if (m >= 7) return `${String(y).slice(2)}/${String(y+1).slice(2)}`;
+  return `${String(y-1).slice(2)}/${String(y).slice(2)}`;
+}
+
+function getSeason(dateStr) {
+  const parts = dateStr.split('/');
+  const m = parseInt(parts[1]);
+  const y = parseInt(parts[2]);
+  if (m >= 7) return `${String(y).slice(2)}/${String(y+1).slice(2)}`;
+  return `${String(y-1).slice(2)}/${String(y).slice(2)}`;
+}
+
+function getYear(dateStr) { return dateStr.split('/')[2]; }
+
+const _periodMode = { type: 'epoca', value: getCurrentSeason() };
+
+function getAvailableSeasons() {
+  const s = new Set(_listaCache.map(n => getSeason(n.date)));
+  const cur = getCurrentSeason();
+  s.add(cur);
+  return [...s].sort();
+}
+
+function getAvailableYears() {
+  const s = new Set(_listaCache.map(n => getYear(n.date)));
+  s.add(String(new Date().getFullYear()));
+  return [...s].sort();
+}
+
+function getListByPeriod() {
+  return _listaCache.filter(n =>
+    _periodMode.type === 'epoca'
+      ? getSeason(n.date) === _periodMode.value
+      : getYear(n.date) === _periodMode.value
+  );
+}
+
+function setPeriodMode(type) {
+  _periodMode.type = type;
+  const avail = type === 'epoca' ? getAvailableSeasons() : getAvailableYears();
+  const cur = type === 'epoca' ? getCurrentSeason() : String(new Date().getFullYear());
+  _periodMode.value = avail.includes(cur) ? cur : avail[avail.length - 1] || cur;
+  refreshCurrentView();
+}
+
+function setPeriodValue(value) {
+  _periodMode.value = value;
+  refreshCurrentView();
+}
+
+function refreshCurrentView() {
+  const id = document.querySelector('.view.active')?.id;
+  if (id === 'view-lista') { buildPeriodSelector('period-selector-lista'); renderListaContent(); }
+  if (id === 'view-stats') { buildPeriodSelector('period-selector-stats'); renderStatsContent(); }
+}
+
+function buildPeriodSelector(wrapperId) {
+  const wrap = document.getElementById(wrapperId);
+  if (!wrap) return;
+  const avail = _periodMode.type === 'epoca' ? getAvailableSeasons() : getAvailableYears();
+  const chips = avail.map(v =>
+    `<button class="period-chip${v === _periodMode.value ? ' active' : ''}" onclick="setPeriodValue('${v}')">${v}</button>`
+  ).join('');
+  wrap.innerHTML = `
+    <div class="period-mode-toggle">
+      <button class="period-mode-btn${_periodMode.type === 'epoca' ? ' active' : ''}" onclick="setPeriodMode('epoca')">Época</button>
+      <button class="period-mode-btn${_periodMode.type === 'ano' ? ' active' : ''}" onclick="setPeriodMode('ano')">Ano Civil</button>
+    </div>
+    <div class="period-chips">${chips}</div>`;
+}
+
+// ──────────────────────────────────────────────
 // FILTROS
 // ──────────────────────────────────────────────
 const _filters = { search: '', comp: '', role: '', status: '' };
@@ -1516,7 +1660,7 @@ function setCompFilter(comp) {
 
 function getFilteredList() {
   const today = new Date();
-  return _listaCache.filter(n => {
+  return getListByPeriod().filter(n => {
     if (_filters.search) {
       const q = _filters.search;
       const haystack = [n.home_team, n.away_team, n.venue, n.location]
@@ -1535,7 +1679,7 @@ function getFilteredList() {
 }
 
 function buildCompChips() {
-  const comps = [...new Set(_listaCache.map(n => n.competition).filter(Boolean))].sort();
+  const comps = [...new Set(getListByPeriod().map(n => n.competition).filter(Boolean))].sort();
   const wrap = document.getElementById('filter-comp-chips');
   if (comps.length <= 1) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = comps.map(c => `
@@ -1571,23 +1715,24 @@ async function renderLista() {
     document.getElementById('offline-banner').classList.remove('show');
   }
 
+  buildPeriodSelector('period-selector-lista');
   buildCompChips();
   renderListaContent();
 }
 
 function renderListaContent() {
   const cont = document.getElementById('lista-content');
+  const periodList = getListByPeriod();
   const filtered = getFilteredList();
-  const list = _listaCache;
   const today = new Date();
-  const totalEur = list.reduce((s, n) => s + (n.total || 0), 0);
-  const upcoming = list.filter(n => parseDate(n.date) >= today).length;
-  const past = list.filter(n => parseDate(n.date) < today).length;
+  const totalEur = periodList.reduce((s, n) => s + (n.total || 0), 0);
+  const upcoming = periodList.filter(n => parseDate(n.date) >= today).length;
+  const past = periodList.filter(n => parseDate(n.date) < today).length;
 
   document.getElementById('stats-row').innerHTML = `
     <div class="stat-card">
       <div class="stat-label">Total Nomeações</div>
-      <div class="stat-value">${list.length}</div>
+      <div class="stat-value">${periodList.length}</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">A realizar</div>
@@ -1609,17 +1754,26 @@ function renderListaContent() {
   if (hasActiveFilter) {
     countEl.style.display = 'block';
     document.getElementById('filter-count-val').textContent = filtered.length;
-    document.getElementById('filter-count-total').textContent = list.length;
+    document.getElementById('filter-count-total').textContent = periodList.length;
   } else {
     countEl.style.display = 'none';
   }
 
-  if (list.length === 0) {
+  if (_listaCache.length === 0) {
     cont.innerHTML = `
       <div class="empty-state">
         <div class="icon">📋</div>
         <div>Ainda não tens nomeações guardadas.</div>
         <div style="margin-top:8px; font-size:13px;">Cola uma SMS para começar.</div>
+      </div>`;
+    return;
+  }
+
+  if (periodList.length === 0) {
+    cont.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📅</div>
+        <div>Sem nomeações neste período.</div>
       </div>`;
     return;
   }
@@ -1859,9 +2013,14 @@ let _monthChart = null;
 async function renderStats() {
   if (!_listaCache.length) {
     const { data, error } = await db.from('nomeacoes').select('*').order('created_at', { ascending: false });
-    if (!error) _listaCache = data;
+    if (!error) { _listaCache = data; localStorage.setItem('nomeacoes_cache', JSON.stringify(data)); }
   }
-  const list = _listaCache;
+  buildPeriodSelector('period-selector-stats');
+  renderStatsContent();
+}
+
+function renderStatsContent() {
+  const list = getListByPeriod();
 
   // ── Resumo financeiro ──
   const totalEur     = list.reduce((s, n) => s + (n.total || 0), 0);
