@@ -9,6 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="Árbitro">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0f1117">
+  <link rel="manifest" href="/manifest.json">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
@@ -714,6 +715,113 @@
       header .sub { display: none; }
     }
 
+    /* ── OFFLINE BANNER ── */
+    .offline-banner {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      background: rgba(245,158,11,.12);
+      border-bottom: 1px solid rgba(245,158,11,.25);
+      padding: 10px 24px;
+      padding-left: calc(24px + env(safe-area-inset-left));
+      padding-right: calc(24px + env(safe-area-inset-right));
+      color: var(--yellow);
+      font-size: 13px;
+    }
+    .offline-banner.show { display: flex; }
+
+    /* ── FILTROS ── */
+    .filter-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .filter-search-wrap { position: relative; }
+    .filter-search-wrap .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 15px;
+      pointer-events: none;
+    }
+    .filter-search {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 9px 12px 9px 36px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color .15s;
+      -webkit-appearance: none;
+    }
+    .filter-search:focus { border-color: var(--accent); }
+    .filter-search::placeholder { color: var(--muted); }
+
+    .filter-chips {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    .filter-chips::-webkit-scrollbar { display: none; }
+
+    .chip {
+      flex-shrink: 0;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      cursor: pointer;
+      touch-action: manipulation;
+      white-space: nowrap;
+      transition: all .15s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .filter-selects { display: flex; gap: 8px; }
+    .filter-select {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: 14px;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238892b0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+      cursor: pointer;
+    }
+    .filter-active-count {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: right;
+      margin-top: -2px;
+    }
+    .filter-active-count span { color: var(--accent); font-weight: 700; }
+
     /* Fix number input spinners on iOS */
     input[type=number] { -moz-appearance: textfield; }
     input[type=number]::-webkit-inner-spin-button,
@@ -735,6 +843,10 @@
   </style>
 </head>
 <body>
+
+<div class="offline-banner" id="offline-banner">
+  📴 Sem ligação — a mostrar dados guardados localmente
+</div>
 
 <header>
   <div>
@@ -872,6 +984,34 @@
     <div class="nomeacoes-header">
       <h2>Nomeações</h2>
     </div>
+    <div class="filter-bar">
+      <div class="filter-search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="search" class="filter-search" id="filter-search"
+          placeholder="Pesquisar equipas, pavilhão, local..."
+          oninput="onFilterChange()">
+      </div>
+      <div class="filter-chips" id="filter-comp-chips"></div>
+      <div class="filter-selects">
+        <select class="filter-select" id="filter-role" onchange="onFilterChange()">
+          <option value="">Todas as funções</option>
+          <option value="1A">1A</option>
+          <option value="2A">2A</option>
+          <option value="3A">3A</option>
+          <option value="4A">4A</option>
+          <option value="CRON">CRON</option>
+        </select>
+        <select class="filter-select" id="filter-status" onchange="onFilterChange()">
+          <option value="">Todos os estados</option>
+          <option value="pending">Pendente</option>
+          <option value="done">Realizado</option>
+        </select>
+      </div>
+      <div class="filter-active-count" id="filter-count" style="display:none;">
+        A mostrar <span id="filter-count-val"></span> de <span id="filter-count-total"></span> nomeações
+      </div>
+    </div>
+
     <div class="stats-row" id="stats-row"></div>
     <div id="lista-content"></div>
   </div>
@@ -1355,6 +1495,55 @@ function clearSMS() {
 }
 
 // ──────────────────────────────────────────────
+// FILTROS
+// ──────────────────────────────────────────────
+const _filters = { search: '', comp: '', role: '', status: '' };
+
+function onFilterChange() {
+  _filters.search = document.getElementById('filter-search').value.trim().toLowerCase();
+  _filters.role   = document.getElementById('filter-role').value;
+  _filters.status = document.getElementById('filter-status').value;
+  renderListaContent();
+}
+
+function setCompFilter(comp) {
+  _filters.comp = _filters.comp === comp ? '' : comp;
+  document.querySelectorAll('#filter-comp-chips .chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.comp === _filters.comp);
+  });
+  renderListaContent();
+}
+
+function getFilteredList() {
+  const today = new Date();
+  return _listaCache.filter(n => {
+    if (_filters.search) {
+      const q = _filters.search;
+      const haystack = [n.home_team, n.away_team, n.venue, n.location]
+        .map(v => (v || '').toLowerCase()).join(' ');
+      if (!haystack.includes(q)) return false;
+    }
+    if (_filters.comp && n.competition !== _filters.comp) return false;
+    if (_filters.role && n.my_role !== _filters.role) return false;
+    if (_filters.status) {
+      const isPast = parseDate(n.date) < today;
+      if (_filters.status === 'done' && !isPast) return false;
+      if (_filters.status === 'pending' && isPast) return false;
+    }
+    return true;
+  });
+}
+
+function buildCompChips() {
+  const comps = [...new Set(_listaCache.map(n => n.competition).filter(Boolean))].sort();
+  const wrap = document.getElementById('filter-comp-chips');
+  if (comps.length <= 1) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = comps.map(c => `
+    <button class="chip${_filters.comp === c ? ' active' : ''}" data-comp="${c}" onclick="setCompFilter('${c}')">${c}</button>
+  `).join('');
+}
+
+// ──────────────────────────────────────────────
 // LISTA
 // ──────────────────────────────────────────────
 async function renderLista() {
@@ -1366,12 +1555,30 @@ async function renderLista() {
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (error) {
-    cont.innerHTML = `<div style="text-align:center;padding:40px;color:var(--red);">Erro ao carregar: ${error.message}</div>`;
-    return;
+  if (error || !list) {
+    // Fallback: dados guardados localmente
+    const cached = localStorage.getItem('nomeacoes_cache');
+    if (cached) {
+      _listaCache = JSON.parse(cached);
+      document.getElementById('offline-banner').classList.add('show');
+    } else {
+      cont.innerHTML = `<div style="text-align:center;padding:40px;color:var(--red);">Erro ao carregar: ${error?.message || 'sem ligação'}</div>`;
+      return;
+    }
+  } else {
+    _listaCache = list;
+    localStorage.setItem('nomeacoes_cache', JSON.stringify(list));
+    document.getElementById('offline-banner').classList.remove('show');
   }
 
-  _listaCache = list;
+  buildCompChips();
+  renderListaContent();
+}
+
+function renderListaContent() {
+  const cont = document.getElementById('lista-content');
+  const filtered = getFilteredList();
+  const list = _listaCache;
   const today = new Date();
   const totalEur = list.reduce((s, n) => s + (n.total || 0), 0);
   const upcoming = list.filter(n => parseDate(n.date) >= today).length;
@@ -1396,6 +1603,17 @@ async function renderLista() {
     </div>
   `;
 
+  // Filter counter
+  const countEl = document.getElementById('filter-count');
+  const hasActiveFilter = _filters.search || _filters.comp || _filters.role || _filters.status;
+  if (hasActiveFilter) {
+    countEl.style.display = 'block';
+    document.getElementById('filter-count-val').textContent = filtered.length;
+    document.getElementById('filter-count-total').textContent = list.length;
+  } else {
+    countEl.style.display = 'none';
+  }
+
   if (list.length === 0) {
     cont.innerHTML = `
       <div class="empty-state">
@@ -1406,13 +1624,23 @@ async function renderLista() {
     return;
   }
 
-  // Group by month/year
+  if (filtered.length === 0) {
+    cont.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔍</div>
+        <div>Nenhuma nomeação corresponde aos filtros.</div>
+        <div style="margin-top:8px; font-size:13px;">Tenta ajustar a pesquisa ou os filtros.</div>
+      </div>`;
+    return;
+  }
+
+  // Group by month/year (usar lista filtrada)
   const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const monthShort = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const groups = {};
-  list.forEach(n => {
+  filtered.forEach(n => {
     const parts = n.date.split('/');
-    const key = parts[2] + '-' + parts[1]; // YYYY-MM for sorting
+    const key = parts[2] + '-' + parts[1];
     if (!groups[key]) groups[key] = [];
     groups[key].push(n);
   });
@@ -1794,6 +2022,20 @@ function showView(name) {
   if (name === 'lista') renderLista();
   if (name === 'stats') renderStats();
 }
+
+// ──────────────────────────────────────────────
+// SERVICE WORKER
+// ──────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW:', err));
+  });
+}
+
+window.addEventListener('online',  () => { renderLista(); });
+window.addEventListener('offline', () => {
+  document.getElementById('offline-banner').classList.add('show');
+});
 </script>
 </body>
 </html>
