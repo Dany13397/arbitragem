@@ -2,12 +2,17 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Árbitro Futsal — Nomeações</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Árbitro">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0f1117">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
     :root {
       --bg: #0f1117;
@@ -27,18 +32,26 @@
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-family: -apple-system, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
       font-size: 14px;
-      min-height: 100vh;
+      min-height: 100dvh;
+      -webkit-text-size-adjust: 100%;
+      overscroll-behavior: none;
     }
 
     header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       padding: 16px 24px;
+      padding-top: calc(16px + env(safe-area-inset-top));
+      padding-left: calc(24px + env(safe-area-inset-left));
+      padding-right: calc(24px + env(safe-area-inset-right));
       display: flex;
       align-items: center;
       gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
     }
 
     header .logo {
@@ -68,6 +81,8 @@
       cursor: pointer;
       font-size: 13px;
       transition: all .15s;
+      touch-action: manipulation;
+      min-height: 44px;
     }
 
     .tab-btn.active {
@@ -78,7 +93,14 @@
 
     .tab-btn:hover:not(.active) { color: var(--text); }
 
-    .container { max-width: 960px; margin: 0 auto; padding: 24px; }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px;
+      padding-left: calc(24px + env(safe-area-inset-left));
+      padding-right: calc(24px + env(safe-area-inset-right));
+      padding-bottom: calc(90px + env(safe-area-inset-bottom));
+    }
 
     /* ── PAGE VIEWS ── */
     .view { display: none; }
@@ -110,11 +132,12 @@
       color: var(--text);
       padding: 12px;
       font-family: 'Consolas', monospace;
-      font-size: 13px;
+      font-size: 16px;
       resize: vertical;
       min-height: 80px;
       outline: none;
       transition: border-color .15s;
+      -webkit-appearance: none;
     }
 
     textarea:focus { border-color: var(--accent); }
@@ -130,6 +153,10 @@
       font-size: 13px;
       font-weight: 600;
       transition: opacity .15s;
+      touch-action: manipulation;
+      min-height: 44px;
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     .btn:hover { opacity: .85; }
@@ -266,8 +293,9 @@
       border-radius: 8px;
       color: var(--text);
       padding: 8px 12px;
-      font-size: 14px;
+      font-size: 16px;
       outline: none;
+      -webkit-appearance: none;
     }
 
     .km-input-row input[type=number]:focus { border-color: var(--accent); }
@@ -451,9 +479,10 @@
       inset: 0;
       background: rgba(0,0,0,.65);
       z-index: 100;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
-      padding: 20px;
+      padding: 0;
+      overscroll-behavior: contain;
     }
 
     .modal-overlay.open { display: flex; }
@@ -461,11 +490,26 @@
     .modal {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: var(--radius) var(--radius) 0 0;
       width: 100%;
       max-width: 600px;
-      max-height: 90vh;
+      max-height: 92dvh;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    @media (min-width: 641px) {
+      .modal-overlay {
+        align-items: center;
+        padding: 20px;
+      }
+      .modal {
+        border-radius: var(--radius);
+        max-height: 90dvh;
+        padding-bottom: 0;
+      }
     }
 
     .modal-header {
@@ -621,6 +665,73 @@
 
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── BOTTOM NAVIGATION ── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      z-index: 50;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 10px 4px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      touch-action: manipulation;
+      min-height: 52px;
+      transition: color .15s;
+      -webkit-user-select: none;
+      user-select: none;
+      letter-spacing: 0.2px;
+    }
+
+    .nav-btn.active { color: var(--accent); }
+    .nav-btn .nav-icon { font-size: 22px; line-height: 1; }
+
+    /* Hide top tabs on mobile */
+    @media (max-width: 640px) {
+      header .tabs { display: none; }
+      header .sub { display: none; }
+    }
+
+    /* Fix number input spinners on iOS */
+    input[type=number] { -moz-appearance: textfield; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+    /* Nomeacao item touch feedback */
+    .nomeacao-item { -webkit-user-select: none; user-select: none; }
+    .nomeacao-item:active { opacity: .8; }
+
+    /* Bigger del button touch target */
+    .nomeacao-item .del-btn {
+      padding: 10px;
+      min-width: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
   </style>
 </head>
 <body>
@@ -637,6 +748,25 @@
     <button class="tab-btn" onclick="showView('ranking')">Classificações</button>
   </div>
 </header>
+
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-btn active" id="nav-nova" onclick="showView('nova')">
+    <span class="nav-icon">➕</span>
+    <span>Nova</span>
+  </button>
+  <button class="nav-btn" id="nav-lista" onclick="showView('lista')">
+    <span class="nav-icon">📋</span>
+    <span>Nomeações</span>
+  </button>
+  <button class="nav-btn" id="nav-stats" onclick="showView('stats')">
+    <span class="nav-icon">📊</span>
+    <span>Estatísticas</span>
+  </button>
+  <button class="nav-btn" id="nav-ranking" onclick="showView('ranking')">
+    <span class="nav-icon">🏆</span>
+    <span>Classificações</span>
+  </button>
+</nav>
 
 <!-- ══════════════════ NOVA NOMEAÇÃO ══════════════════ -->
 <div class="view active" id="view-nova">
@@ -687,7 +817,7 @@
           <!-- Campo 1A quando não sou o principal -->
           <div id="ref1a-row" style="display:none; margin-bottom:16px;">
             <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;">Árbitro Principal (1A)</label>
-            <input type="text" id="ref1a-input" placeholder="Nome do 1A..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-size:14px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+            <input type="text" id="ref1a-input" placeholder="Nome do 1A..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-size:16px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
           </div>
 
           <table class="officials-table">
@@ -851,7 +981,7 @@
         <div id="modal-ref1a-row" style="display:none; margin-bottom:12px;">
           <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;">Árbitro Principal (1A)</label>
           <div style="display:flex;gap:8px;">
-            <input type="text" id="modal-ref1a-input" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-size:14px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+            <input type="text" id="modal-ref1a-input" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-size:16px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
             <button class="btn btn-primary" style="padding:6px 14px;" onclick="saveRef1A()">Guardar</button>
           </div>
         </div>
@@ -871,7 +1001,7 @@
         <h4>Honorários</h4>
         <div class="km-input-row" style="margin-bottom:12px;">
           <label>Distância Braga → Pavilhão:</label>
-          <input type="number" id="modal-km-input" min="0" style="width:100px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:14px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" oninput="previewModalCalc()">
+          <input type="number" id="modal-km-input" min="0" style="width:100px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:16px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" oninput="previewModalCalc()">
           <span style="color:var(--muted);">km</span>
           <button class="btn btn-primary" style="padding:6px 14px;" onclick="saveModalKm()">Guardar</button>
         </div>
@@ -1654,9 +1784,13 @@ async function renderStats() {
 function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   const idx = { nova: 0, lista: 1, stats: 2, ranking: 3 }[name] ?? 0;
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  const navBtn = document.getElementById('nav-' + name);
+  if (navBtn) navBtn.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'instant' });
   if (name === 'lista') renderLista();
   if (name === 'stats') renderStats();
 }
