@@ -79,6 +79,11 @@ function buildEvent(game) {
     foldLine(`SUMMARY:${escapeIcs(summary)}`),
     foldLine(`LOCATION:${escapeIcs(location)}`),
     foldLine(`DESCRIPTION:${description}`),
+    'BEGIN:VALARM',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Enviar resultado do jogo',
+    'TRIGGER:+PT2H',
+    'END:VALARM',
     'END:VEVENT',
   ];
 
