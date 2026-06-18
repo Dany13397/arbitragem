@@ -59,7 +59,7 @@ function buildEvent(game) {
   const dtstart = toIcsDate(game.date, game.time || '00:00');
   const dtend = addMinutes(dtstart, 90); // ~90 min match
 
-  const summary = `⚽ ${game.home_team} vs ${game.away_team}`;
+  const summary = `[${game.competition}] ${game.home_team} vs ${game.away_team}`;
   const location = [game.venue, game.location].filter(Boolean).join(', ');
   const description = [
     `Competição: ${game.competition || ''}`,
