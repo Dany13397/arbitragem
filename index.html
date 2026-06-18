@@ -94,6 +94,39 @@
 
     .tab-btn:hover:not(.active) { color: var(--text); }
 
+    .cal-btn {
+      margin-left: auto;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      touch-action: manipulation;
+      transition: background .15s;
+    }
+    .cal-btn:hover { background: var(--surface2); }
+
+    /* when tabs are shown, remove auto margin from cal-btn since tabs already have margin-left:auto */
+    @media (min-width: 715px) {
+      .cal-btn { margin-left: 8px; }
+    }
+
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%;
+      max-height: 90dvh;
+      overflow-y: auto;
+    }
+
     .container {
       max-width: 960px;
       margin: 0 auto;
@@ -161,7 +194,9 @@
     }
 
     .btn:hover { opacity: .85; }
-    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary { background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; min-height: 44px; touch-action: manipulation; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 20px; font-size: 14px; cursor: pointer; min-height: 44px; touch-action: manipulation; }
+    .btn-secondary:hover { opacity: .85; }
     .btn-success { background: var(--green); color: #fff; }
     .btn-danger  { background: var(--red); color: #fff; }
     .btn-ghost   { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
@@ -921,7 +956,36 @@
     <button class="tab-btn" onclick="showView('stats')">Estatísticas</button>
     <button class="tab-btn" onclick="showView('ranking')">Classificações</button>
   </div>
+  <button class="cal-btn" onclick="showCalendarModal()" title="Sincronizar com Calendário iOS">📅</button>
 </header>
+
+<!-- ══ MODAL CALENDÁRIO ══ -->
+<div id="modal-calendar" class="modal" style="display:none" onclick="if(event.target===this)closeCalendarModal()">
+  <div class="modal-box" style="max-width:380px">
+    <div class="modal-header">
+      <span class="modal-title">📅 Calendário iOS</span>
+      <button class="modal-close" onclick="closeCalendarModal()">✕</button>
+    </div>
+    <div style="padding:20px; display:flex; flex-direction:column; gap:16px;">
+      <p style="color:var(--muted); font-size:13px; line-height:1.5;">
+        Subscreve o feed para que os teus jogos apareçam automaticamente no Calendário iOS. O calendário atualiza-se sozinho quando adicionas novos jogos.
+      </p>
+      <div style="background:var(--surface2); border-radius:8px; padding:12px; font-family:monospace; font-size:11px; color:var(--accent); word-break:break-all;" id="cal-url-display"></div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn-primary" style="width:100%" onclick="openCalendarFeed()">📱 Abrir no Calendário iOS</button>
+        <button class="btn-secondary" style="width:100%" onclick="copyCalendarUrl()">📋 Copiar link</button>
+      </div>
+      <div style="border-top:1px solid var(--border); padding-top:12px;">
+        <p style="font-size:12px; color:var(--muted); line-height:1.6;">
+          <strong style="color:var(--text)">Como subscrever manualmente:</strong><br>
+          1. Calendário → <em>Adicionar Conta</em><br>
+          2. Seleciona <em>Outro → Subscrever Calendário</em><br>
+          3. Cola o link acima
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 
 <nav class="bottom-nav" id="bottom-nav">
   <button class="nav-btn active" id="nav-nova" onclick="showView('nova')">
@@ -1219,6 +1283,42 @@
 </div>
 
 <script>
+// ──────────────────────────────────────────────
+// CALENDAR FEED
+// ──────────────────────────────────────────────
+function getCalendarUrl() {
+  const base = window.location.origin;
+  return `${base}/api/calendar`;
+}
+
+function showCalendarModal() {
+  const url = getCalendarUrl();
+  document.getElementById('cal-url-display').textContent = url;
+  document.getElementById('modal-calendar').style.display = 'flex';
+}
+
+function closeCalendarModal() {
+  document.getElementById('modal-calendar').style.display = 'none';
+}
+
+function openCalendarFeed() {
+  const url = getCalendarUrl();
+  window.location.href = `webcal://${url.replace(/^https?:\/\//, '')}`;
+}
+
+async function copyCalendarUrl() {
+  const url = getCalendarUrl();
+  try {
+    await navigator.clipboard.writeText(url);
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  } catch {
+    prompt('Copia este link:', url);
+  }
+}
+
 // ──────────────────────────────────────────────
 // SUPABASE
 // ──────────────────────────────────────────────
