@@ -118,15 +118,6 @@
       .cal-btn { margin-left: 8px; }
     }
 
-    .modal-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      width: 100%;
-      max-height: 90dvh;
-      overflow-y: auto;
-    }
-
     .container {
       max-width: 960px;
       margin: 0 auto;
@@ -574,6 +565,21 @@
 
     .modal-close:hover { color: var(--text); }
 
+    .edit-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 12px;
+      font-size: 15px;
+      outline: none;
+      font-family: inherit;
+      margin-top: 4px;
+    }
+    .edit-input:focus { border-color: var(--accent); }
+    select.edit-input option { background: var(--surface2); }
+
     .modal-body { padding: 20px; }
 
     .modal-section { margin-bottom: 20px; }
@@ -957,11 +963,12 @@
     <button class="tab-btn" onclick="showView('ranking')">Classificações</button>
   </div>
   <button class="cal-btn" onclick="showCalendarModal()" title="Sincronizar com Calendário iOS">📅</button>
+  <button class="cal-btn" onclick="showWidgetModal()" title="Widget iOS">📲</button>
 </header>
 
 <!-- ══ MODAL CALENDÁRIO ══ -->
-<div id="modal-calendar" class="modal" style="display:none" onclick="if(event.target===this)closeCalendarModal()">
-  <div class="modal-box" style="max-width:380px">
+<div id="modal-calendar" class="modal-overlay" style="display:none;align-items:center;padding:20px;" onclick="if(event.target===this)closeCalendarModal()">
+  <div class="modal" style="max-width:380px;border-radius:var(--radius);padding-bottom:0;max-height:90dvh;">
     <div class="modal-header">
       <span class="modal-title">📅 Calendário iOS</span>
       <button class="modal-close" onclick="closeCalendarModal()">✕</button>
@@ -983,6 +990,31 @@
           3. Cola o link acima
         </p>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL WIDGET ══ -->
+<div id="modal-widget" class="modal-overlay" style="display:none;align-items:center;padding:20px;" onclick="if(event.target===this)closeWidgetModal()">
+  <div class="modal" style="max-width:400px;border-radius:var(--radius);padding-bottom:0;max-height:90dvh;">
+    <div class="modal-header">
+      <span class="modal-title">📲 Widget iOS</span>
+      <button class="modal-close" onclick="closeWidgetModal()">✕</button>
+    </div>
+    <div style="padding:20px; display:flex; flex-direction:column; gap:16px;">
+      <p style="color:var(--muted); font-size:13px; line-height:1.5;">
+        Mostra o próximo jogo diretamente no ecrã inicial do iPhone. Requer a app <strong style="color:var(--text)">Scriptable</strong> (gratuita na App Store).
+      </p>
+      <div style="border:1px solid var(--border); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+        <p style="font-size:12px; color:var(--muted); line-height:1.7;">
+          <strong style="color:var(--text)">1.</strong> Instala o <strong style="color:var(--text)">Scriptable</strong> na App Store<br>
+          <strong style="color:var(--text)">2.</strong> Copia o código do widget abaixo<br>
+          <strong style="color:var(--text)">3.</strong> Abre o Scriptable → <em>+</em> → cola o código → guarda com o nome <em>Arbitro</em><br>
+          <strong style="color:var(--text)">4.</strong> No ecrã inicial: segura → <em>+</em> → Scriptable → tamanho Pequeno → seleciona <em>Arbitro</em>
+        </p>
+      </div>
+      <div style="background:var(--surface2); border-radius:8px; padding:12px; font-family:monospace; font-size:10px; color:var(--accent); max-height:120px; overflow-y:auto; word-break:break-all; white-space:pre-wrap;" id="widget-code-preview">A carregar...</div>
+      <button class="btn-primary" style="width:100%" onclick="copyWidgetCode()">📋 Copiar código do widget</button>
     </div>
   </div>
 </div>
@@ -1216,66 +1248,130 @@
         <span id="modal-badge-role" class="badge badge-role"></span>
       </div>
       <div class="modal-title" id="modal-title"></div>
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;margin-left:auto;margin-right:8px;" onclick="toggleEditMode()" id="modal-edit-btn">✏️ Editar</button>
       <button class="modal-close" onclick="document.getElementById('modal-overlay').classList.remove('open')">✕</button>
     </div>
     <div class="modal-body">
 
-      <div class="modal-section">
-        <h4>Jogo</h4>
-        <div class="detail-grid" style="margin-bottom:0;">
-          <div class="detail-item" style="grid-column:span 2;">
-            <label>Equipas</label>
-            <div class="teams" id="modal-teams"></div>
+      <!-- ── VISTA NORMAL ── -->
+      <div id="modal-view-normal">
+        <div class="modal-section">
+          <h4>Jogo</h4>
+          <div class="detail-grid" style="margin-bottom:0;">
+            <div class="detail-item" style="grid-column:span 2;">
+              <label>Equipas</label>
+              <div class="teams" id="modal-teams"></div>
+            </div>
+            <div class="detail-item">
+              <label>Data</label>
+              <div class="val" id="modal-date"></div>
+            </div>
+            <div class="detail-item">
+              <label>Hora</label>
+              <div class="val" id="modal-time"></div>
+            </div>
+            <div class="detail-item" style="grid-column:span 2;">
+              <label>Pavilhão</label>
+              <div class="val" id="modal-venue"></div>
+            </div>
+            <div class="detail-item">
+              <label>Local</label>
+              <div class="val" id="modal-location"></div>
+            </div>
           </div>
-          <div class="detail-item">
-            <label>Data</label>
-            <div class="val" id="modal-date"></div>
+        </div>
+
+        <div class="modal-section">
+          <h4>Equipa de Arbitragem</h4>
+          <div id="modal-ref1a-row" style="display:none; margin-bottom:12px;">
+            <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;">Árbitro Principal (1A)</label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="modal-ref1a-input" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-size:16px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+              <button class="btn btn-primary" style="padding:6px 14px;" onclick="saveRef1A()">Guardar</button>
+            </div>
           </div>
-          <div class="detail-item">
-            <label>Hora</label>
-            <div class="val" id="modal-time"></div>
+          <table class="officials-table">
+            <thead>
+              <tr>
+                <th>Função</th>
+                <th>Nome</th>
+                <th>Telemóvel</th>
+              </tr>
+            </thead>
+            <tbody id="modal-officials"></tbody>
+          </table>
+        </div>
+
+        <div class="modal-section">
+          <h4>Honorários</h4>
+          <div class="km-input-row" style="margin-bottom:12px;">
+            <label>Distância Braga → Pavilhão:</label>
+            <input type="number" id="modal-km-input" min="0" style="width:100px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:16px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" oninput="previewModalCalc()">
+            <span style="color:var(--muted);">km</span>
+            <button class="btn btn-primary" style="padding:6px 14px;" onclick="saveModalKm()">Guardar</button>
           </div>
-          <div class="detail-item" style="grid-column:span 2;">
-            <label>Pavilhão</label>
-            <div class="val" id="modal-venue"></div>
-          </div>
-          <div class="detail-item">
-            <label>Local</label>
-            <div class="val" id="modal-location"></div>
-          </div>
+          <div id="modal-calc"></div>
         </div>
       </div>
 
-      <div class="modal-section">
-        <h4>Equipa de Arbitragem</h4>
-        <div id="modal-ref1a-row" style="display:none; margin-bottom:12px;">
-          <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;">Árbitro Principal (1A)</label>
-          <div style="display:flex;gap:8px;">
-            <input type="text" id="modal-ref1a-input" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-size:16px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-            <button class="btn btn-primary" style="padding:6px 14px;" onclick="saveRef1A()">Guardar</button>
+      <!-- ── VISTA EDIÇÃO ── -->
+      <div id="modal-view-edit" style="display:none;">
+        <div class="modal-section">
+          <h4>Editar Jogo</h4>
+          <div class="detail-grid">
+            <div class="detail-item" style="grid-column:span 2;">
+              <label>Equipa Casa</label>
+              <input type="text" id="edit-home" class="edit-input">
+            </div>
+            <div class="detail-item" style="grid-column:span 2;">
+              <label>Equipa Fora</label>
+              <input type="text" id="edit-away" class="edit-input">
+            </div>
+            <div class="detail-item">
+              <label>Data (DD/MM/AAAA)</label>
+              <input type="text" id="edit-date" class="edit-input" placeholder="ex: 15/03/2026">
+            </div>
+            <div class="detail-item">
+              <label>Hora (HH:MM)</label>
+              <input type="text" id="edit-time" class="edit-input" placeholder="ex: 17:00">
+            </div>
+            <div class="detail-item" style="grid-column:span 2;">
+              <label>Pavilhão</label>
+              <input type="text" id="edit-venue" class="edit-input">
+            </div>
+            <div class="detail-item" style="grid-column:span 2;">
+              <label>Local (Cidade)</label>
+              <input type="text" id="edit-location" class="edit-input">
+            </div>
+            <div class="detail-item">
+              <label>Competição</label>
+              <select id="edit-competition" class="edit-input">
+                <option value="LP">LP</option>
+                <option value="CN 2D FTS">CN 2D FTS</option>
+                <option value="CN FEM S15 FTS">CN FEM S15 FTS</option>
+                <option value="TN FEM FTS">TN FEM FTS</option>
+                <option value="CN S19 I DIV FTS">CN S19 I DIV FTS</option>
+                <option value="CN S17 FTS">CN S17 FTS</option>
+                <option value="TN S15 FTS">TN S15 FTS</option>
+                <option value="TN S17 FTS">TN S17 FTS</option>
+              </select>
+            </div>
+            <div class="detail-item">
+              <label>Função</label>
+              <select id="edit-role" class="edit-input">
+                <option value="1A">1A</option>
+                <option value="2A">2A</option>
+                <option value="3A">3A</option>
+                <option value="4A">4A</option>
+                <option value="CRON">CRON</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:16px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="saveEditNomeacao()" id="edit-save-btn">💾 Guardar alterações</button>
+            <button class="btn btn-ghost" onclick="toggleEditMode()">Cancelar</button>
           </div>
         </div>
-        <table class="officials-table">
-          <thead>
-            <tr>
-              <th>Função</th>
-              <th>Nome</th>
-              <th>Telemóvel</th>
-            </tr>
-          </thead>
-          <tbody id="modal-officials"></tbody>
-        </table>
-      </div>
-
-      <div class="modal-section">
-        <h4>Honorários</h4>
-        <div class="km-input-row" style="margin-bottom:12px;">
-          <label>Distância Braga → Pavilhão:</label>
-          <input type="number" id="modal-km-input" min="0" style="width:100px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:16px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" oninput="previewModalCalc()">
-          <span style="color:var(--muted);">km</span>
-          <button class="btn btn-primary" style="padding:6px 14px;" onclick="saveModalKm()">Guardar</button>
-        </div>
-        <div id="modal-calc"></div>
       </div>
 
     </div>
@@ -1295,6 +1391,7 @@ function showCalendarModal() {
   const url = getCalendarUrl();
   document.getElementById('cal-url-display').textContent = url;
   document.getElementById('modal-calendar').style.display = 'flex';
+  document.getElementById('modal-calendar').style.alignItems = 'center';
 }
 
 function closeCalendarModal() {
@@ -1304,6 +1401,45 @@ function closeCalendarModal() {
 function openCalendarFeed() {
   const url = getCalendarUrl();
   window.location.href = `webcal://${url.replace(/^https?:\/\//, '')}`;
+}
+
+// ──────────────────────────────────────────────
+// WIDGET iOS
+// ──────────────────────────────────────────────
+let _widgetCode = null;
+
+async function showWidgetModal() {
+  const wm = document.getElementById('modal-widget');
+  wm.style.display = 'flex';
+  wm.style.alignItems = 'center';
+  if (!_widgetCode) {
+    try {
+      const res = await fetch('/widget.js');
+      _widgetCode = await res.text();
+      // Substituir URL base pelo domínio real
+      _widgetCode = _widgetCode.replace('https://arbitragem.vercel.app', window.location.origin);
+    } catch {
+      _widgetCode = '// Erro ao carregar o código. Vai a: ' + window.location.origin + '/widget.js';
+    }
+  }
+  document.getElementById('widget-code-preview').textContent = _widgetCode.slice(0, 300) + '...';
+}
+
+function closeWidgetModal() {
+  document.getElementById('modal-widget').style.display = 'none';
+}
+
+async function copyWidgetCode() {
+  if (!_widgetCode) return;
+  try {
+    await navigator.clipboard.writeText(_widgetCode);
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅ Código copiado!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  } catch {
+    prompt('Copia o código:', _widgetCode);
+  }
 }
 
 async function copyCalendarUrl() {
@@ -2087,7 +2223,83 @@ async function saveModalKm() {
 function closeModal(e) {
   if (e.target === document.getElementById('modal-overlay')) {
     document.getElementById('modal-overlay').classList.remove('open');
+    // reset edit mode on close
+    document.getElementById('modal-view-normal').style.display = '';
+    document.getElementById('modal-view-edit').style.display = 'none';
+    document.getElementById('modal-edit-btn').textContent = '✏️ Editar';
   }
+}
+
+function toggleEditMode() {
+  const normal = document.getElementById('modal-view-normal');
+  const edit = document.getElementById('modal-view-edit');
+  const btn = document.getElementById('modal-edit-btn');
+  const isEditing = edit.style.display !== 'none';
+  if (isEditing) {
+    normal.style.display = '';
+    edit.style.display = 'none';
+    btn.textContent = '✏️ Editar';
+  } else {
+    const n = _listaCache.find(x => x.id === _modalId);
+    if (!n) return;
+    document.getElementById('edit-home').value = n.home_team || '';
+    document.getElementById('edit-away').value = n.away_team || '';
+    document.getElementById('edit-date').value = n.date || '';
+    document.getElementById('edit-time').value = n.time || '';
+    document.getElementById('edit-venue').value = n.venue || '';
+    document.getElementById('edit-location').value = n.location || '';
+    document.getElementById('edit-competition').value = n.competition || 'LP';
+    document.getElementById('edit-role').value = n.my_role || '1A';
+    normal.style.display = 'none';
+    edit.style.display = '';
+    btn.textContent = '← Voltar';
+  }
+}
+
+async function saveEditNomeacao() {
+  const n = _listaCache.find(x => x.id === _modalId);
+  if (!n) return;
+
+  const home_team   = document.getElementById('edit-home').value.trim();
+  const away_team   = document.getElementById('edit-away').value.trim();
+  const date        = document.getElementById('edit-date').value.trim();
+  const time        = document.getElementById('edit-time').value.trim();
+  const venue       = document.getElementById('edit-venue').value.trim();
+  const location    = document.getElementById('edit-location').value.trim();
+  const competition = document.getElementById('edit-competition').value;
+  const my_role     = document.getElementById('edit-role').value;
+
+  if (!home_team || !away_team || !date || !time) {
+    alert('Preenche pelo menos as equipas, data e hora.');
+    return;
+  }
+
+  // Recalcular honorários se competição ou função mudou
+  const fees = FEES[competition] || {};
+  const premio = fees[my_role] || 0;
+  const km = n.km || 0;
+  const km_total = km * 2 * KM_RATE;
+  const meal_total = km > MEAL_KM_THRESHOLD ? MEAL * 2 : MEAL;
+  const total = premio + km_total + meal_total;
+
+  const btn = document.getElementById('edit-save-btn');
+  btn.textContent = 'A guardar...'; btn.disabled = true;
+
+  const { error } = await db.from('nomeacoes').update({
+    home_team, away_team, date, time, venue, location,
+    competition, my_role, premio, km_total, meal_total, total
+  }).eq('id', _modalId);
+
+  btn.textContent = '💾 Guardar alterações'; btn.disabled = false;
+  if (error) { alert('Erro: ' + error.message); return; }
+
+  // Atualiza cache local
+  Object.assign(n, { home_team, away_team, date, time, venue, location, competition, my_role, premio, km_total, meal_total, total });
+
+  // Volta ao modo normal com dados atualizados
+  toggleEditMode();
+  openModal(_modalId);
+  renderLista();
 }
 
 async function markKmReceived(e, id, value) {
