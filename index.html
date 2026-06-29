@@ -1195,12 +1195,33 @@
 <!-- ══════════════════ AFB ══════════════════ -->
 <div class="view" id="view-afb">
   <div class="container">
-    <div class="nomeacoes-header">
-      <h2>AFB</h2>
-      <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddManualAfb()">+ Adicionar</button>
+
+    <!-- Sub-tabs AFB -->
+    <div style="display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:2px;margin-bottom:18px;">
+      <button id="afb-sub-nomeacoes" class="period-mode-btn active" onclick="showAfbSub('nomeacoes')">Nomeações</button>
+      <button id="afb-sub-cat"       class="period-mode-btn"       onclick="showAfbSub('cat')">CAT</button>
     </div>
-    <div class="stats-row" id="afb-stats-row"></div>
-    <div id="afb-content"></div>
+
+    <!-- ── Sub: Nomeações AFB ── -->
+    <div id="afb-pane-nomeacoes">
+      <div class="nomeacoes-header">
+        <h2>AFB — Nomeações</h2>
+        <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddManualAfb()">+ Adicionar</button>
+      </div>
+      <div class="stats-row" id="afb-stats-row"></div>
+      <div id="afb-content"></div>
+    </div>
+
+    <!-- ── Sub: CAT ── -->
+    <div id="afb-pane-cat" style="display:none;">
+      <div class="nomeacoes-header">
+        <h2>CAT Futsal</h2>
+        <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddCat()">+ Adicionar</button>
+      </div>
+      <div class="stats-row" id="cat-stats-row"></div>
+      <div id="cat-content"></div>
+    </div>
+
   </div>
 </div>
 
@@ -1343,6 +1364,48 @@
         <div style="display:flex;gap:8px;margin-top:16px;">
           <button class="btn btn-primary" style="flex:1;" onclick="saveRecibo()" id="recibo-save-btn">💾 Guardar</button>
           <button class="btn btn-ghost" onclick="document.getElementById('recibo-overlay').classList.remove('open')">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ MODAL CAT ══════════════════ -->
+<div class="modal-overlay" id="cat-overlay" onclick="if(event.target===this)document.getElementById('cat-overlay').classList.remove('open')">
+  <div class="modal" id="cat-modal">
+    <div class="modal-header">
+      <div class="modal-title">Nova Atividade CAT</div>
+      <button class="modal-close" onclick="document.getElementById('cat-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <div class="detail-grid">
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Atividade</label>
+            <select id="cat-activity" class="edit-input" onchange="onCatActivityChange()"></select>
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Data (DD/MM/AAAA)</label>
+            <input type="text" id="cat-date" class="edit-input" placeholder="ex: 15/03/2026">
+          </div>
+          <div class="detail-item" id="cat-km-row" style="grid-column:span 2; display:none;">
+            <label>Km (ida e volta)</label>
+            <input type="number" id="cat-km" class="edit-input" placeholder="0" min="0" oninput="updateCatPreview()">
+          </div>
+        </div>
+
+        <!-- Resumo do valor -->
+        <div id="cat-preview" style="background:var(--surface2);border-radius:10px;padding:14px;margin-top:14px;display:none;">
+          <div id="cat-preview-lines" style="font-size:13px;display:flex;flex-direction:column;gap:6px;"></div>
+          <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;">Total</span>
+            <span id="cat-preview-total" style="font-size:18px;font-weight:700;font-family:Consolas,monospace;color:var(--accent);"></span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveCat()" id="cat-save-btn">💾 Guardar</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('cat-overlay').classList.remove('open')">Cancelar</button>
         </div>
       </div>
     </div>
@@ -2967,6 +3030,147 @@ function showFpfSub(sub) {
   document.getElementById('fpf-sub-nomeacoes').className = 'period-mode-btn' + (sub === 'nomeacoes' ? ' active' : '');
   document.getElementById('fpf-sub-recibos').className   = 'period-mode-btn' + (sub === 'recibos'   ? ' active' : '');
   if (sub === 'recibos') renderRecibos();
+}
+
+let _afbSub = 'nomeacoes';
+function showAfbSub(sub) {
+  _afbSub = sub;
+  document.getElementById('afb-pane-nomeacoes').style.display = sub === 'nomeacoes' ? '' : 'none';
+  document.getElementById('afb-pane-cat').style.display       = sub === 'cat'       ? '' : 'none';
+  document.getElementById('afb-sub-nomeacoes').className = 'period-mode-btn' + (sub === 'nomeacoes' ? ' active' : '');
+  document.getElementById('afb-sub-cat').className       = 'period-mode-btn' + (sub === 'cat'       ? ' active' : '');
+  if (sub === 'cat') renderCat();
+}
+
+// ──────────────────────────────────────────────
+// CAT ACTIVITIES
+// ──────────────────────────────────────────────
+const CAT_ACTIVITIES = [
+  { label: 'Elaboração testes escritos',       value: 35, km: false, meal: false },
+  { label: 'Correção testes escritos',          value: 25, km: true,  meal: false },
+  { label: 'Preparação de formação ARA',        value: 40, km: false, meal: false },
+  { label: 'Preparação de formação (outras)',   value: 25, km: false, meal: false },
+  { label: 'Formação/provas até meio dia',      value: 25, km: true,  meal: false },
+  { label: 'Formação/provas dia inteiro',       value: 40, km: true,  meal: true  },
+  { label: 'Análise relatórios OBS',            value: 25, km: false, meal: false },
+  { label: 'Reclamações Arb (testes escritos)', value: 25, km: true,  meal: false },
+  { label: 'Reclamações Arb (Relatórios OBS)',  value: 40, km: false, meal: false },
+  { label: 'Preparação do treino',              value: 25, km: false, meal: false },
+  { label: 'Dinamização do treino',             value: 25, km: false, meal: false },
+];
+
+function openAddCat() {
+  const sel = document.getElementById('cat-activity');
+  sel.innerHTML = CAT_ACTIVITIES.map((a, i) =>
+    `<option value="${i}">${a.label} — ${fmt(a.value)}</option>`
+  ).join('');
+  document.getElementById('cat-date').value = '';
+  document.getElementById('cat-km').value = '';
+  document.getElementById('cat-km-row').style.display = 'none';
+  document.getElementById('cat-preview').style.display = 'none';
+  document.getElementById('cat-overlay').classList.add('open');
+  onCatActivityChange();
+}
+
+function onCatActivityChange() {
+  const idx = parseInt(document.getElementById('cat-activity').value);
+  const act = CAT_ACTIVITIES[idx];
+  if (!act) return;
+  const kmRow = document.getElementById('cat-km-row');
+  kmRow.style.display = act.km ? '' : 'none';
+  if (!act.km) document.getElementById('cat-km').value = '';
+  updateCatPreview();
+}
+
+function updateCatPreview() {
+  const idx = parseInt(document.getElementById('cat-activity').value);
+  const act = CAT_ACTIVITIES[idx];
+  if (!act) return;
+  const km  = act.km ? (parseInt(document.getElementById('cat-km').value) || 0) : 0;
+  const kmTotal   = km > 0 ? km * 2 * KM_RATE : 0;
+  const mealTotal = act.meal ? MEAL : 0;
+  const total = act.value + kmTotal + mealTotal;
+
+  const lines = [`<div>Honorário: ${fmt(act.value)}</div>`];
+  if (kmTotal > 0) lines.push(`<div>KM (${km} km): ${fmt(kmTotal)}</div>`);
+  if (mealTotal > 0) lines.push(`<div>Subsídio refeição: ${fmt(mealTotal)}</div>`);
+
+  document.getElementById('cat-preview-lines').innerHTML = lines.join('');
+  document.getElementById('cat-preview-total').textContent = fmt(total);
+  document.getElementById('cat-preview').style.display = '';
+}
+
+async function saveCat() {
+  const idx  = parseInt(document.getElementById('cat-activity').value);
+  const act  = CAT_ACTIVITIES[idx];
+  const date = document.getElementById('cat-date').value.trim();
+  if (!act || !date) { alert('Preenche a data.'); return; }
+
+  const km       = act.km ? (parseInt(document.getElementById('cat-km').value) || 0) : 0;
+  const kmTotal  = km > 0 ? km * 2 * KM_RATE : 0;
+  const mealTotal = act.meal ? MEAL : 0;
+  const total    = act.value + kmTotal + mealTotal;
+
+  const row = {
+    activity: act.label,
+    value: act.value,
+    date,
+    km,
+    km_total: kmTotal,
+    meal_total: mealTotal,
+    total,
+  };
+
+  document.getElementById('cat-save-btn').disabled = true;
+  const { error } = await db.from('cat_atividades').insert([row]);
+  document.getElementById('cat-save-btn').disabled = false;
+
+  if (error) { alert('Erro ao guardar: ' + error.message); return; }
+  document.getElementById('cat-overlay').classList.remove('open');
+  renderCat();
+}
+
+async function renderCat() {
+  const cont = document.getElementById('cat-content');
+  cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">A carregar...</div>';
+
+  const { data: list, error } = await db
+    .from('cat_atividades')
+    .select('*')
+    .order('date', { ascending: false });
+
+  if (error || !list) {
+    cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Erro ao carregar.</div>';
+    return;
+  }
+
+  const totalVal   = list.reduce((s, r) => s + (r.total || 0), 0);
+  const totalKm    = list.reduce((s, r) => s + (r.km || 0), 0);
+  document.getElementById('cat-stats-row').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Atividades</div><div class="stat-value">${list.length}</div></div>
+    <div class="stat-card"><div class="stat-label">KM Total</div><div class="stat-value">${totalKm}</div></div>
+    <div class="stat-card"><div class="stat-label">Total CAT</div><div class="stat-value" style="font-size:18px;">${fmt(totalVal)}</div></div>`;
+
+  if (list.length === 0) {
+    cont.innerHTML = '<div class="empty-state"><div class="icon">📋</div><div>Sem atividades CAT.</div></div>';
+    return;
+  }
+
+  cont.innerHTML = list.map(r => `
+    <div class="nomeacao-item">
+      <div class="date-col">
+        <div class="day">${(r.date||'').split('/')[0]||''}</div>
+        <div class="month">${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt((r.date||'').split('/')[1])-1]||''}</div>
+      </div>
+      <div class="info-col">
+        <div class="teams-row">${r.activity}</div>
+        <div class="meta-row">
+          ${r.km > 0 ? `<span style="color:var(--muted);font-size:11px;">${r.km} km</span>` : ''}
+          ${r.meal_total > 0 ? `<span style="color:var(--muted);font-size:11px;"> · Refeição ${fmt(r.meal_total)}</span>` : ''}
+        </div>
+      </div>
+      <div class="amount-col"><div class="total">${fmt(r.total||0)}</div></div>
+    </div>`).join('');
 }
 
 // ──────────────────────────────────────────────
