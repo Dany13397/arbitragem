@@ -1198,6 +1198,7 @@
       <h2>AFB</h2>
       <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddManualAfb()">+ Adicionar</button>
     </div>
+    <div class="stats-row" id="afb-stats-row"></div>
     <div id="afb-content"></div>
   </div>
 </div>
@@ -1211,9 +1212,7 @@
     <div class="stats-section">
       <div class="section-title">Resumo Financeiro</div>
       <div class="stats-grid" id="s-finance-cards"></div>
-      <div class="chart-box">
-        <div class="breakdown-bars" id="s-breakdown"></div>
-      </div>
+      <div id="s-breakdown"></div>
     </div>
 
     <div class="stats-section">
@@ -2145,12 +2144,16 @@ function getAvailableYears() {
   return [...s].sort();
 }
 
-function getListByPeriod() {
-  return _listaCache.filter(n =>
+function filterByPeriod(list) {
+  return list.filter(n =>
     _periodMode.type === 'epoca'
       ? getSeason(n.date) === _periodMode.value
       : getYear(n.date) === _periodMode.value
   );
+}
+
+function getListByPeriod() {
+  return filterByPeriod(_listaCache);
 }
 
 function setPeriodMode(type) {
@@ -2651,80 +2654,121 @@ async function deleteNomeacao(e, id) {
 let _monthChart = null;
 
 async function renderStats() {
-  if (!_listaCache.length) {
-    const { data, error } = await db.from('nomeacoes').select('*').order('created_at', { ascending: false });
-    if (!error) { _listaCache = data; localStorage.setItem('nomeacoes_cache', JSON.stringify(data)); }
+  // Para estatísticas precisamos de todos os jogos (FPF + AFB)
+  const { data, error } = await db.from('nomeacoes').select('*').order('created_at', { ascending: false });
+  if (!error && data) {
+    _allNomeacoesCache = data;
+  } else if (!_allNomeacoesCache.length && _listaCache.length) {
+    _allNomeacoesCache = _listaCache;
   }
   buildPeriodSelector('period-selector-stats');
   renderStatsContent();
 }
 
+let _allNomeacoesCache = [];
+
+function sumList(list) {
+  return {
+    count:        list.length,
+    total:        list.reduce((s, n) => s + (n.total || 0), 0),
+    premio:       list.reduce((s, n) => s + (n.premio || 0), 0),
+    km_total:     list.reduce((s, n) => s + (n.km_total || 0), 0),
+    meal_total:   list.reduce((s, n) => s + (n.meal_total || 0), 0),
+    perda:        list.reduce((s, n) => s + (n.perda_salarial || 0), 0),
+    km:           list.reduce((s, n) => s + (n.km || 0), 0),
+  };
+}
+
+function renderFinanceSection(elId, label, color, sums, showPerda) {
+  const { count, total, premio, km_total, meal_total, perda } = sums;
+  const pct = v => total ? Math.round(v / total * 100) : 0;
+  const rows = [
+    { l: 'Prémios',         v: premio,    c: '#4f7fff' },
+    { l: 'Kms',             v: km_total,  c: '#7c3aed' },
+    { l: 'Refeição',        v: meal_total,c: '#22c55e' },
+    { l: 'Perda Salarial',  v: perda,     c: '#f59e0b' },
+  ].filter(r => r.v > 0);
+  const maxBar = Math.max(...rows.map(r => r.v), 1);
+
+  return `
+    <div style="background:var(--surface);border:1px solid ${color}44;border-left:3px solid ${color};border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:13px;font-weight:700;color:${color};">${label}</span>
+        <span style="font-size:18px;font-weight:700;font-family:Consolas,monospace;color:var(--text);">${fmt(total)}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px;">
+        <div class="stat-card" style="padding:8px 10px;">
+          <div class="stat-label">Jogos</div>
+          <div class="stat-value" style="font-size:18px;">${count}</div>
+        </div>
+        <div class="stat-card" style="padding:8px 10px;">
+          <div class="stat-label">Prémios</div>
+          <div class="stat-value" style="font-size:16px;">${fmt(premio)}</div>
+          <div style="font-size:10px;color:var(--muted);">${pct(premio)}%</div>
+        </div>
+        <div class="stat-card" style="padding:8px 10px;">
+          <div class="stat-label">Kms</div>
+          <div class="stat-value" style="font-size:16px;">${fmt(km_total)}</div>
+          <div style="font-size:10px;color:var(--muted);">${pct(km_total)}%</div>
+        </div>
+        <div class="stat-card" style="padding:8px 10px;">
+          <div class="stat-label">Refeição</div>
+          <div class="stat-value" style="font-size:16px;">${fmt(meal_total)}</div>
+          <div style="font-size:10px;color:var(--muted);">${pct(meal_total)}%</div>
+        </div>
+        ${perda > 0 ? `<div class="stat-card" style="padding:8px 10px;">
+          <div class="stat-label">Perda Sal.</div>
+          <div class="stat-value" style="font-size:16px;">${fmt(perda)}</div>
+          <div style="font-size:10px;color:var(--muted);">${pct(perda)}%</div>
+        </div>` : ''}
+      </div>
+      ${rows.map(r => `
+        <div class="breakdown-bar-row">
+          <div class="bar-label">${r.l}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.round(r.v/maxBar*100)}%;background:${r.c}"></div></div>
+          <div class="bar-value">${fmt(r.v)}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
 function renderStatsContent() {
-  const list = getListByPeriod();
+  const all  = filterByPeriod(_allNomeacoesCache.length ? _allNomeacoesCache : _listaCache);
+  const fpf  = all.filter(n => !n.source || n.source === 'fpf');
+  const afb  = all.filter(n => n.source === 'afb');
+
+  const sumsAll = sumList(all);
+  const sumsFpf = sumList(fpf);
+  const sumsAfb = sumList(afb);
 
   // ── Resumo financeiro ──
-  const totalEur        = list.reduce((s, n) => s + (n.total || 0), 0);
-  const totalPremio     = list.reduce((s, n) => s + (n.premio || 0), 0);
-  const totalKmEur      = list.reduce((s, n) => s + (n.km_total || 0), 0);
-  const totalMeal       = list.reduce((s, n) => s + (n.meal_total || 0), 0);
-  const totalPerdaSalar = list.reduce((s, n) => s + (n.perda_salarial || 0), 0);
-  const avgPerGame      = list.length ? totalEur / list.length : 0;
-
   document.getElementById('s-finance-cards').innerHTML = `
     <div class="big-stat">
-      <div class="label">Total Acumulado</div>
-      <div class="value">${fmt(totalEur)}</div>
-      <div class="sub">${list.length} jogo${list.length !== 1 ? 's' : ''}</div>
+      <div class="label">Total Combinado</div>
+      <div class="value">${fmt(sumsAll.total)}</div>
+      <div class="sub">${sumsAll.count} jogo${sumsAll.count !== 1 ? 's' : ''}</div>
     </div>
     <div class="big-stat">
-      <div class="label">Prémios</div>
-      <div class="value">${fmt(totalPremio)}</div>
-      <div class="sub">${totalEur ? Math.round(totalPremio/totalEur*100) : 0}% do total</div>
+      <div class="label">FPF</div>
+      <div class="value">${fmt(sumsFpf.total)}</div>
+      <div class="sub">${sumsFpf.count} jogo${sumsFpf.count !== 1 ? 's' : ''}</div>
     </div>
     <div class="big-stat">
-      <div class="label">Kms</div>
-      <div class="value">${fmt(totalKmEur)}</div>
-      <div class="sub">${totalEur ? Math.round(totalKmEur/totalEur*100) : 0}% do total</div>
-    </div>
-    <div class="big-stat">
-      <div class="label">Subsídios Refeição</div>
-      <div class="value">${fmt(totalMeal)}</div>
-      <div class="sub">${totalEur ? Math.round(totalMeal/totalEur*100) : 0}% do total</div>
-    </div>
-    ${totalPerdaSalar > 0 ? `
-    <div class="big-stat">
-      <div class="label">Perda Salarial</div>
-      <div class="value">${fmt(totalPerdaSalar)}</div>
-      <div class="sub">${totalEur ? Math.round(totalPerdaSalar/totalEur*100) : 0}% do total</div>
-    </div>` : ''}`;
+      <div class="label">AFB</div>
+      <div class="value">${fmt(sumsAfb.total)}</div>
+      <div class="sub">${sumsAfb.count} jogo${sumsAfb.count !== 1 ? 's' : ''}</div>
+    </div>`;
 
-  const maxBreakdown = Math.max(totalPremio, totalKmEur, totalMeal, totalPerdaSalar, 1);
-  document.getElementById('s-breakdown').innerHTML = [
-    { label: 'Prémios',        val: totalPremio,     color: '#4f7fff' },
-    { label: 'Kms',            val: totalKmEur,      color: '#7c3aed' },
-    { label: 'Refeição',       val: totalMeal,       color: '#22c55e' },
-    { label: 'Perda Salarial', val: totalPerdaSalar, color: '#f59e0b' }
-  ].filter(r => r.val > 0).map(r => `
-    <div class="breakdown-bar-row">
-      <div class="bar-label">${r.label}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(r.val/maxBreakdown*100)}%;background:${r.color}"></div></div>
-      <div class="bar-value">${fmt(r.val)}</div>
-    </div>`).join('');
+  document.getElementById('s-breakdown').innerHTML =
+    renderFinanceSection('s-fpf-detail', 'FPF', '#4f7fff', sumsFpf) +
+    renderFinanceSection('s-afb-detail', 'AFB', '#f59e0b', sumsAfb);
 
-  // ── Jogos por mês ──
+  // ── Jogos por mês (FPF vs AFB) ──
   const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const monthMap = {};
-  list.forEach(n => {
-    const parts = n.date.split('/');
-    const key = parts[2] + '-' + parts[1];
-    monthMap[key] = (monthMap[key] || 0) + 1;
-  });
-  const sortedMonths = Object.keys(monthMap).sort();
-  const monthLabels = sortedMonths.map(k => {
-    const [y, m] = k.split('-');
-    return monthNames[parseInt(m)-1] + ' ' + y.slice(2);
-  });
-  const monthData = sortedMonths.map(k => monthMap[k]);
+  const monthMapFpf = {}, monthMapAfb = {};
+  fpf.forEach(n => { const k = n.date.split('/').slice(1).reverse().join('-'); monthMapFpf[k] = (monthMapFpf[k]||0)+1; });
+  afb.forEach(n => { const k = n.date.split('/').slice(1).reverse().join('-'); monthMapAfb[k] = (monthMapAfb[k]||0)+1; });
+  const allMonths = [...new Set([...Object.keys(monthMapFpf), ...Object.keys(monthMapAfb)])].sort();
+  const monthLabels = allMonths.map(k => { const [y,m] = k.split('-'); return monthNames[parseInt(m)-1]+' '+y.slice(2); });
 
   if (_monthChart) _monthChart.destroy();
   const ctx = document.getElementById('s-chart-months').getContext('2d');
@@ -2732,57 +2776,50 @@ function renderStatsContent() {
     type: 'bar',
     data: {
       labels: monthLabels,
-      datasets: [{
-        label: 'Jogos',
-        data: monthData,
-        backgroundColor: 'rgba(79,127,255,.7)',
-        borderRadius: 6,
-        borderSkipped: false
-      }]
+      datasets: [
+        { label: 'FPF', data: allMonths.map(k => monthMapFpf[k]||0), backgroundColor: 'rgba(79,127,255,.8)', borderRadius: 4, borderSkipped: false },
+        { label: 'AFB', data: allMonths.map(k => monthMapAfb[k]||0), backgroundColor: 'rgba(245,158,11,.8)', borderRadius: 4, borderSkipped: false }
+      ]
     },
     options: {
-      plugins: { legend: { display: false } },
+      plugins: { legend: { display: true, labels: { color: '#8892b0', boxWidth: 12 } } },
       scales: {
-        x: { ticks: { color: '#8892b0' }, grid: { color: '#2e3250' } },
+        x: { ticks: { color: '#8892b0' }, grid: { color: '#2e3250' }, stacked: false },
         y: { ticks: { color: '#8892b0', stepSize: 1 }, grid: { color: '#2e3250' }, beginAtZero: true }
       }
     }
   });
 
-  // ── Jogos por competição ──
+  // ── Jogos por competição (todos) ──
   const compMap = {};
-  list.forEach(n => {
-    if (!compMap[n.competition]) compMap[n.competition] = { count: 0, total: 0 };
+  all.forEach(n => {
+    if (!compMap[n.competition]) compMap[n.competition] = { count: 0, total: 0, source: n.source || 'fpf' };
     compMap[n.competition].count++;
     compMap[n.competition].total += n.total || 0;
   });
   const sortedComps = Object.entries(compMap).sort((a,b) => b[1].count - a[1].count);
   document.getElementById('s-comp-list').innerHTML = sortedComps.map(([comp, d]) => `
     <div class="comp-row">
-      <span class="badge badge-lp">${comp}</span>
-      <span class="comp-name"></span>
+      <span class="badge badge-lp" style="${d.source==='afb'?'background:rgba(245,158,11,.15);color:#f59e0b;border-color:rgba(245,158,11,.3);':''}">${comp}</span>
+      <span class="comp-name" style="font-size:10px;color:var(--muted);">${d.source.toUpperCase()}</span>
       <span class="comp-count">${d.count} jogo${d.count !== 1 ? 's' : ''}</span>
       <span class="comp-total">${fmt(d.total)}</span>
     </div>`).join('');
 
-  // ── Deslocações ──
-  const totalKm  = list.reduce((s, n) => s + (n.km || 0), 0);
-  const avgKm    = list.length ? Math.round(totalKm / list.length) : 0;
+  // ── Deslocações (todos) ──
+  const totalKm = sumsAll.km;
+  const avgKm   = sumsAll.count ? Math.round(totalKm / sumsAll.count) : 0;
   document.getElementById('s-total-km').textContent = totalKm.toLocaleString('pt');
   document.getElementById('s-avg-km').textContent   = avgKm.toLocaleString('pt');
 
   const locMap = {};
-  list.forEach(n => { if (n.location) locMap[n.location] = (locMap[n.location] || 0) + 1; });
-  const sortedLocs = Object.entries(locMap).sort((a,b) => b[1] - a[1]);
-  document.getElementById('s-locations').innerHTML = sortedLocs.map(([loc, cnt]) => `
-    <div class="location-pill">
-      <span>${loc}</span>
-      <span class="loc-count">${cnt}×</span>
-    </div>`).join('');
+  all.forEach(n => { if (n.location) locMap[n.location] = (locMap[n.location] || 0) + 1; });
+  document.getElementById('s-locations').innerHTML = Object.entries(locMap).sort((a,b) => b[1]-a[1]).map(([loc, cnt]) => `
+    <div class="location-pill"><span>${loc}</span><span class="loc-count">${cnt}×</span></div>`).join('');
 
-  // ── Jogos por função ──
+  // ── Jogos por função (todos) ──
   const roleMap = {};
-  list.forEach(n => { if (n.my_role) roleMap[n.my_role] = (roleMap[n.my_role] || 0) + 1; });
+  all.forEach(n => { if (n.my_role) roleMap[n.my_role] = (roleMap[n.my_role] || 0) + 1; });
   const roleOrder = ['1A', '2A', '3A', '4A', 'CRON'];
   const sortedRoles = Object.entries(roleMap).sort((a,b) => roleOrder.indexOf(a[0]) - roleOrder.indexOf(b[0]));
   const maxRole = Math.max(...sortedRoles.map(r => r[1]), 1);
@@ -2795,15 +2832,12 @@ function renderStatsContent() {
 
   // ── Colegas de equipa ──
   const colMap = {};
-  list.forEach(n => {
-    const officials = Array.isArray(n.officials) ? n.officials : [];
-    officials.forEach(o => {
-      if (!o.isMe && o.name && o.name !== '—') {
-        colMap[o.name] = (colMap[o.name] || 0) + 1;
-      }
+  all.forEach(n => {
+    (Array.isArray(n.officials) ? n.officials : []).forEach(o => {
+      if (!o.isMe && o.name && o.name !== '—') colMap[o.name] = (colMap[o.name] || 0) + 1;
     });
   });
-  const sortedCols = Object.entries(colMap).sort((a,b) => b[1] - a[1]).slice(0, 15);
+  const sortedCols = Object.entries(colMap).sort((a,b) => b[1]-a[1]).slice(0, 15);
   const maxCol = sortedCols[0]?.[1] || 1;
   document.getElementById('s-colleagues').innerHTML = sortedCols.map(([name, cnt]) => `
     <div class="colleague-row">
@@ -2992,12 +3026,33 @@ async function renderAfb() {
 
   _afbCache = list;
 
+  const today = new Date();
+  const afbTotal    = list.reduce((s,n) => s + (n.total||0), 0);
+  const afbUpcoming = list.filter(n => parseDate(n.date) >= today).length;
+  const afbPast     = list.filter(n => parseDate(n.date) < today).length;
+  document.getElementById('afb-stats-row').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Total Nomeações</div>
+      <div class="stat-value">${list.length}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">A realizar</div>
+      <div class="stat-value">${afbUpcoming}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Realizados</div>
+      <div class="stat-value">${afbPast}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total AFB</div>
+      <div class="stat-value" style="font-size:18px;">${fmt(afbTotal)}</div>
+    </div>`;
+
   if (list.length === 0) {
     cont.innerHTML = '<div class="empty-state"><div class="icon">🏟️</div><div>Sem nomeações AFB.</div></div>';
     return;
   }
 
-  const today = new Date();
   const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const monthShort = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const groups = {};
