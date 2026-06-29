@@ -973,9 +973,9 @@
   </div>
   <div class="tabs">
     <button class="tab-btn active" onclick="showView('nova')">Nova Nomeação</button>
-    <button class="tab-btn" onclick="showView('lista')">Nomeações</button>
+    <button class="tab-btn" onclick="showView('lista')">FPF</button>
     <button class="tab-btn" onclick="showView('stats')">Estatísticas</button>
-    <button class="tab-btn" onclick="showView('recibos')">Outros Recibos</button>
+    <button class="tab-btn" onclick="showView('afb')">AFB</button>
     <button class="tab-btn" onclick="showView('ranking')">Classificações</button>
   </div>
   <button class="cal-btn" onclick="showCalendarModal()" title="Sincronizar com Calendário iOS">📅</button>
@@ -1017,15 +1017,15 @@
   </button>
   <button class="nav-btn" id="nav-lista" onclick="showView('lista')">
     <span class="nav-icon">📋</span>
-    <span>Nomeações</span>
+    <span>FPF</span>
   </button>
   <button class="nav-btn" id="nav-stats" onclick="showView('stats')">
     <span class="nav-icon">📊</span>
     <span>Estatísticas</span>
   </button>
-  <button class="nav-btn" id="nav-recibos" onclick="showView('recibos')">
-    <span class="nav-icon">🧾</span>
-    <span>Recibos</span>
+  <button class="nav-btn" id="nav-afb" onclick="showView('afb')">
+    <span class="nav-icon">🏟️</span>
+    <span>AFB</span>
   </button>
   <button class="nav-btn" id="nav-ranking" onclick="showView('ranking')">
     <span class="nav-icon">🏆</span>
@@ -1131,56 +1131,76 @@
   </div>
 </div>
 
-<!-- ══════════════════ LISTA ══════════════════ -->
+<!-- ══════════════════ FPF ══════════════════ -->
 <div class="view" id="view-lista">
   <div class="container">
-    <div class="nomeacoes-header">
-      <h2>Nomeações</h2>
-      <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddManual()">+ Adicionar</button>
-    </div>
-    <div class="period-selector" id="period-selector-lista"></div>
 
-    <div class="filter-bar">
-      <div class="filter-search-wrap">
-        <span class="search-icon">🔍</span>
-        <input type="search" class="filter-search" id="filter-search"
-          placeholder="Pesquisar equipas, pavilhão, local..."
-          oninput="onFilterChange()">
-      </div>
-      <div class="filter-chips" id="filter-comp-chips"></div>
-      <div class="filter-selects">
-        <select class="filter-select" id="filter-role" onchange="onFilterChange()">
-          <option value="">Todas as funções</option>
-          <option value="1A">1A</option>
-          <option value="2A">2A</option>
-          <option value="3A">3A</option>
-          <option value="4A">4A</option>
-          <option value="CRON">CRON</option>
-        </select>
-        <select class="filter-select" id="filter-status" onchange="onFilterChange()">
-          <option value="">Todos os estados</option>
-          <option value="pending">Pendente</option>
-          <option value="done">Realizado</option>
-        </select>
-      </div>
-      <div class="filter-active-count" id="filter-count" style="display:none;">
-        A mostrar <span id="filter-count-val"></span> de <span id="filter-count-total"></span> nomeações
-      </div>
+    <!-- Sub-tabs FPF -->
+    <div style="display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:2px;margin-bottom:18px;">
+      <button id="fpf-sub-nomeacoes" class="period-mode-btn active" onclick="showFpfSub('nomeacoes')">Nomeações</button>
+      <button id="fpf-sub-recibos"   class="period-mode-btn"        onclick="showFpfSub('recibos')">Recibos</button>
     </div>
 
-    <div class="stats-row" id="stats-row"></div>
-    <div id="lista-content"></div>
+    <!-- ── Sub: Nomeações ── -->
+    <div id="fpf-pane-nomeacoes">
+      <div class="nomeacoes-header">
+        <h2>Nomeações</h2>
+        <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddManual()">+ Adicionar</button>
+      </div>
+      <div class="period-selector" id="period-selector-lista"></div>
+      <div class="filter-bar">
+        <div class="filter-search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="search" class="filter-search" id="filter-search"
+            placeholder="Pesquisar equipas, pavilhão, local..."
+            oninput="onFilterChange()">
+        </div>
+        <div class="filter-chips" id="filter-comp-chips"></div>
+        <div class="filter-selects">
+          <select class="filter-select" id="filter-role" onchange="onFilterChange()">
+            <option value="">Todas as funções</option>
+            <option value="1A">1A</option>
+            <option value="2A">2A</option>
+            <option value="3A">3A</option>
+            <option value="4A">4A</option>
+            <option value="CRON">CRON</option>
+          </select>
+          <select class="filter-select" id="filter-status" onchange="onFilterChange()">
+            <option value="">Todos os estados</option>
+            <option value="pending">Pendente</option>
+            <option value="done">Realizado</option>
+          </select>
+        </div>
+        <div class="filter-active-count" id="filter-count" style="display:none;">
+          A mostrar <span id="filter-count-val"></span> de <span id="filter-count-total"></span> nomeações
+        </div>
+      </div>
+      <div class="stats-row" id="stats-row"></div>
+      <div id="lista-content"></div>
+    </div>
+
+    <!-- ── Sub: Recibos ── -->
+    <div id="fpf-pane-recibos" style="display:none;">
+      <div class="nomeacoes-header">
+        <h2>Outros Recibos</h2>
+        <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddRecibo()">+ Adicionar</button>
+      </div>
+      <div id="recibos-content"><p style="color:var(--muted);text-align:center;padding:40px 0;">Sem recibos registados.</p></div>
+    </div>
+
   </div>
 </div>
 
-<!-- ══════════════════ OUTROS RECIBOS ══════════════════ -->
-<div class="view" id="view-recibos">
+<!-- ══════════════════ AFB ══════════════════ -->
+<div class="view" id="view-afb">
   <div class="container">
     <div class="nomeacoes-header">
-      <h2>Outros Recibos</h2>
-      <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddRecibo()">+ Adicionar</button>
+      <h2>AFB</h2>
     </div>
-    <div id="recibos-content"><p style="color:var(--muted);text-align:center;padding:40px 0;">Sem recibos registados.</p></div>
+    <div class="empty-state">
+      <div class="icon">🏟️</div>
+      <div>Sem conteúdo AFB ainda.</div>
+    </div>
   </div>
 </div>
 
@@ -2706,14 +2726,23 @@ function showView(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
-  const idx = { nova: 0, lista: 1, stats: 2, recibos: 3, ranking: 4 }[name] ?? 0;
+  const idx = { nova: 0, lista: 1, stats: 2, afb: 3, ranking: 4 }[name] ?? 0;
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   const navBtn = document.getElementById('nav-' + name);
   if (navBtn) navBtn.classList.add('active');
   window.scrollTo({ top: 0, behavior: 'instant' });
   if (name === 'lista') renderLista();
   if (name === 'stats') renderStats();
-  if (name === 'recibos') renderRecibos();
+}
+
+let _fpfSub = 'nomeacoes';
+function showFpfSub(sub) {
+  _fpfSub = sub;
+  document.getElementById('fpf-pane-nomeacoes').style.display = sub === 'nomeacoes' ? '' : 'none';
+  document.getElementById('fpf-pane-recibos').style.display   = sub === 'recibos'   ? '' : 'none';
+  document.getElementById('fpf-sub-nomeacoes').className = 'period-mode-btn' + (sub === 'nomeacoes' ? ' active' : '');
+  document.getElementById('fpf-sub-recibos').className   = 'period-mode-btn' + (sub === 'recibos'   ? ' active' : '');
+  if (sub === 'recibos') renderRecibos();
 }
 
 // ──────────────────────────────────────────────
