@@ -979,6 +979,7 @@
     <button class="tab-btn" onclick="showView('ranking')">Classificações</button>
   </div>
   <button class="cal-btn" onclick="showCalendarModal()" title="Sincronizar com Calendário iOS">📅</button>
+  <button class="cal-btn" onclick="openSettings()" title="Configurações" style="margin-left:6px;">⚙️</button>
 </header>
 
 <!-- ══ MODAL CALENDÁRIO ══ -->
@@ -1344,6 +1345,99 @@
           <button class="btn btn-ghost" onclick="document.getElementById('recibo-overlay').classList.remove('open')">Cancelar</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ MODAL CONFIGURAÇÕES ══════════════════ -->
+<div class="modal-overlay" id="settings-overlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal" id="settings-modal" style="max-width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Configurações</div>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Sub-tabs -->
+      <div style="display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:2px;margin-bottom:20px;">
+        <button id="cfg-tab-premios" class="period-mode-btn active" onclick="showCfgTab('premios')">Prémios de Jogo</button>
+        <button id="cfg-tab-geral"   class="period-mode-btn"       onclick="showCfgTab('geral')">Geral</button>
+      </div>
+
+      <!-- ── Prémios de Jogo ── -->
+      <div id="cfg-pane-premios">
+
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Valores em € por função. Altera e guarda para atualizar os cálculos futuros.</p>
+
+        <!-- FPF -->
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#4f7fff;margin-bottom:8px;">FPF</div>
+        <div style="overflow-x:auto;margin-bottom:20px;">
+          <table id="fees-table-fpf" style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.6px;">
+                <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);">Competição</th>
+                <th style="padding:6px 8px;border-bottom:1px solid var(--border);">1A</th>
+                <th style="padding:6px 8px;border-bottom:1px solid var(--border);">2A</th>
+                <th style="padding:6px 8px;border-bottom:1px solid var(--border);">3A</th>
+                <th style="padding:6px 8px;border-bottom:1px solid var(--border);">4A</th>
+                <th style="padding:6px 8px;border-bottom:1px solid var(--border);">CRON</th>
+              </tr>
+            </thead>
+            <tbody id="fees-body-fpf"></tbody>
+          </table>
+        </div>
+
+        <!-- AFB -->
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#f59e0b;margin-bottom:8px;">AFB</div>
+        <div style="overflow-x:auto;margin-bottom:20px;">
+          <table id="fees-table-afb" style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.6px;">
+                <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);">Competição</th>
+                <th style="padding:6px 8px;border-bottom:1px solid var(--border);">1A</th>
+                <th style="padding:6px 8px;border-bottom:1px solid var(--border);">2A</th>
+                <th style="padding:6px 8px;border-bottom:1px solid var(--border);">3A</th>
+                <th style="padding:6px 8px;border-bottom:1px solid var(--border);">4A</th>
+                <th style="padding:6px 8px;border-bottom:1px solid var(--border);">CRON</th>
+              </tr>
+            </thead>
+            <tbody id="fees-body-afb">
+              <tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Sem competições AFB configuradas.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveFeesConfig()">💾 Guardar alterações</button>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:8px;">As alterações aplicam-se apenas a jogos guardados de novo. Jogos já existentes não são alterados.</p>
+      </div>
+
+      <!-- ── Geral ── -->
+      <div id="cfg-pane-geral" style="display:none;">
+        <div class="detail-grid">
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Subsídio de Km (€/km)</label>
+            <input type="number" id="cfg-km-rate" class="edit-input" step="0.01" min="0">
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Subsídio de Refeição (€)</label>
+            <input type="number" id="cfg-meal" class="edit-input" step="0.01" min="0">
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Distância para duplo subsídio (km)</label>
+            <input type="number" id="cfg-meal-threshold" class="edit-input" min="0">
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Perda Salarial — dias úteis (€)</label>
+            <input type="number" id="cfg-perda" class="edit-input" step="0.01" min="0">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveGeneralConfig()">💾 Guardar</button>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -3104,6 +3198,99 @@ async function renderAfb() {
       </div>`;
   }).join('');
 }
+
+// ──────────────────────────────────────────────
+// CONFIGURAÇÕES
+// ──────────────────────────────────────────────
+function openSettings() {
+  renderFeesTable('fpf');
+  renderFeesTable('afb');
+  document.getElementById('cfg-km-rate').value = KM_RATE;
+  document.getElementById('cfg-meal').value = MEAL;
+  document.getElementById('cfg-meal-threshold').value = MEAL_KM_THRESHOLD;
+  document.getElementById('cfg-perda').value = PERDA_SALARIAL;
+  showCfgTab('premios');
+  document.getElementById('settings-overlay').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+
+function showCfgTab(tab) {
+  document.getElementById('cfg-pane-premios').style.display = tab === 'premios' ? '' : 'none';
+  document.getElementById('cfg-pane-geral').style.display   = tab === 'geral'   ? '' : 'none';
+  document.getElementById('cfg-tab-premios').className = 'period-mode-btn' + (tab === 'premios' ? ' active' : '');
+  document.getElementById('cfg-tab-geral').className   = 'period-mode-btn' + (tab === 'geral'   ? ' active' : '');
+}
+
+function renderFeesTable(source) {
+  const feesObj = source === 'fpf' ? FEES : AFB_FEES;
+  const roles = ['1A', '2A', '3A', '4A', 'CRON'];
+  const tbody = document.getElementById('fees-body-' + source);
+
+  if (Object.keys(feesObj).length === 0 && source === 'afb') {
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Sem competições AFB configuradas.</td></tr>';
+    return;
+  }
+
+  const cellStyle = 'padding:4px 4px;text-align:center;';
+  const inputStyle = 'width:52px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 6px;font-size:13px;text-align:center;outline:none;font-family:Consolas,monospace;';
+
+  tbody.innerHTML = Object.entries(feesObj).map(([comp, vals]) => `
+    <tr style="border-bottom:1px solid var(--border)20;">
+      <td style="padding:6px 8px;font-size:12px;font-weight:600;">${comp}</td>
+      ${roles.map(r => `<td style="${cellStyle}">
+        <input type="number" min="0" step="0.5"
+          data-source="${source}" data-comp="${comp}" data-role="${r}"
+          value="${vals[r] ?? 0}" style="${inputStyle}"
+          onfocus="this.style.borderColor='var(--accent)'"
+          onblur="this.style.borderColor='var(--border)'">
+      </td>`).join('')}
+    </tr>`).join('');
+}
+
+function saveFeesConfig() {
+  // Lê todos os inputs e atualiza os objetos FEES / AFB_FEES em memória
+  document.querySelectorAll('#cfg-pane-premios input[data-comp]').forEach(inp => {
+    const { source, comp, role } = inp.dataset;
+    const val = parseFloat(inp.value) || 0;
+    if (source === 'fpf') { if (FEES[comp]) FEES[comp][role] = val; }
+    else                  { if (AFB_FEES[comp]) AFB_FEES[comp][role] = val; }
+  });
+  // Persiste no localStorage
+  localStorage.setItem('fees_fpf', JSON.stringify(FEES));
+  localStorage.setItem('fees_afb', JSON.stringify(AFB_FEES));
+  closeSettings();
+  alert('✓ Prémios atualizados. Aplicados a partir do próximo jogo guardado.');
+}
+
+function saveGeneralConfig() {
+  // Atualiza as constantes globais — hack necessário pois são const
+  window.KM_RATE           = parseFloat(document.getElementById('cfg-km-rate').value) || KM_RATE;
+  window.MEAL              = parseFloat(document.getElementById('cfg-meal').value) || MEAL;
+  window.MEAL_KM_THRESHOLD = parseInt(document.getElementById('cfg-meal-threshold').value) || MEAL_KM_THRESHOLD;
+  window.PERDA_SALARIAL    = parseFloat(document.getElementById('cfg-perda').value) || PERDA_SALARIAL;
+  localStorage.setItem('cfg_general', JSON.stringify({ KM_RATE, MEAL, MEAL_KM_THRESHOLD, PERDA_SALARIAL }));
+  closeSettings();
+}
+
+// Carrega configurações guardadas ao iniciar
+(function loadSavedConfig() {
+  try {
+    const g = JSON.parse(localStorage.getItem('cfg_general') || 'null');
+    if (g) {
+      if (g.KM_RATE)           window.KM_RATE           = g.KM_RATE;
+      if (g.MEAL)              window.MEAL              = g.MEAL;
+      if (g.MEAL_KM_THRESHOLD) window.MEAL_KM_THRESHOLD = g.MEAL_KM_THRESHOLD;
+      if (g.PERDA_SALARIAL)    window.PERDA_SALARIAL    = g.PERDA_SALARIAL;
+    }
+    const fFpf = JSON.parse(localStorage.getItem('fees_fpf') || 'null');
+    if (fFpf) Object.assign(FEES, fFpf);
+    const fAfb = JSON.parse(localStorage.getItem('fees_afb') || 'null');
+    if (fAfb) Object.assign(AFB_FEES, fAfb);
+  } catch(e) {}
+})();
 
 // ──────────────────────────────────────────────
 // SERVICE WORKER
