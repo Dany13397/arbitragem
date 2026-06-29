@@ -1196,11 +1196,9 @@
   <div class="container">
     <div class="nomeacoes-header">
       <h2>AFB</h2>
+      <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddManualAfb()">+ Adicionar</button>
     </div>
-    <div class="empty-state">
-      <div class="icon">🏟️</div>
-      <div>Sem conteúdo AFB ainda.</div>
-    </div>
+    <div id="afb-content"></div>
   </div>
 </div>
 
@@ -1787,6 +1785,95 @@ function capitalizeName(str) {
   return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
 
+// ──────────────────────────────────────────────
+// AFB PARSER
+// ──────────────────────────────────────────────
+const AFB_FEES = {
+  // Preencher com os valores reais da AFB
+  // 'NOME COMPETIÇÃO': { '1A': 0, '2A': 0, 'CRON': 0 }
+};
+
+function isAFBSms(sms) {
+  return /PAV\./i.test(sms);
+}
+
+function parseAFBText(sms) {
+  const raw = sms.trim();
+  const result = { raw, source: 'afb' };
+
+  // Game ID: primeiro token numérico
+  const tokens = raw.split(/\s+/);
+  result.gameId = tokens[0];
+
+  // Role: segundo token antes do primeiro #  ex: "2A SEN" → "2A"
+  const beforeFirst = raw.split('#')[0];
+  const roleMatch = beforeFirst.match(/\b([1-4]A|CRO)\b/i);
+  result.myRole = roleMatch ? roleMatch[1].toUpperCase() : '?';
+
+  // Competition: entre primeiro # e segundo #
+  const compMatch = raw.match(/#([^#]+)#/);
+  result.competition = compMatch ? compMatch[1].trim() : '?';
+
+  // Teams: entre segundo # e terceiro #
+  const teamsMatch = raw.match(/#[^#]+#([^#]+)#/);
+  if (teamsMatch) {
+    const parts = teamsMatch[1].split('*');
+    result.homeTeam = parts[0]?.trim();
+    result.awayTeam = parts[1]?.trim();
+  }
+
+  // A partir do terceiro #
+  const afterThird = raw.split('#').slice(3).join('#');
+
+  // Venue: PAV.NOME até <
+  const venueMatch = afterThird.match(/PAV\.([^<]+)</i);
+  result.venue = venueMatch ? venueMatch[1].trim() : '?';
+
+  // Location: entre < e >
+  const locMatch = afterThird.match(/<([^>]+)>/);
+  result.location = locMatch ? locMatch[1].trim() : '?';
+
+  // Data e hora
+  const dtMatch = afterThird.match(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2})/);
+  result.date = dtMatch ? dtMatch[1] : '?';
+  result.time = dtMatch ? dtMatch[2] : '?';
+
+  // Árbitros: após a hora — formato "FUNÇÃO-INICIAL NOME{9dígitos}"
+  const afterDT = dtMatch ? afterThird.slice(afterThird.indexOf(dtMatch[0]) + dtMatch[0].length).trim() : '';
+  result.officials = parseAFBOfficials(afterDT, result.myRole);
+
+  return result;
+}
+
+function parseAFBOfficials(str, myRole) {
+  const officials = [];
+  // Padrão: ROLE-INICIAL NOME{9digitos}  ex: A-R MARTINS934270898
+  const re = /([A-Z]+-[A-Z])\s+([A-Z][A-Z\s]+?)(\d{9})/g;
+  let m;
+  while ((m = re.exec(str)) !== null) {
+    const roleRaw = m[1]; // ex: A-R, CRO-J, 2A-X
+    const namePart = (m[1].split('-')[1] + ' ' + m[2]).trim();
+    const phone = m[3];
+
+    let role;
+    if (/^CRO/i.test(roleRaw)) role = 'CRON';
+    else if (/^A-/i.test(roleRaw)) role = '1A';
+    else if (/^2A/i.test(roleRaw)) role = '2A';
+    else if (/^3A/i.test(roleRaw)) role = '3A';
+    else if (/^4A/i.test(roleRaw)) role = '4A';
+    else role = roleRaw;
+
+    const isMe = namePart.toLowerCase().includes(MY_SURNAME.toLowerCase());
+    officials.push({ role, name: isMe ? MY_NAME : namePart, phone, isMe });
+  }
+
+  // Garante que eu apareço com a função correta
+  const meEntry = officials.find(o => o.isMe);
+  if (meEntry) meEntry.role = myRole;
+
+  return officials;
+}
+
 
 // ──────────────────────────────────────────────
 // RENDER PARSED
@@ -1795,7 +1882,7 @@ function parseSMS() {
   const sms = document.getElementById('sms-input').value;
   if (!sms.trim()) return;
 
-  currentParsed = parseSMSText(sms);
+  currentParsed = isAFBSms(sms) ? parseAFBText(sms) : { ...parseSMSText(sms), source: 'fpf' };
 
   document.getElementById('badge-comp').textContent = currentParsed.competition;
   document.getElementById('badge-role').textContent = currentParsed.myRole || '?';
@@ -1938,6 +2025,7 @@ async function saveNomeacao() {
     meal_total: currentParsed._mealTotal || 0,
     perda_salarial: currentParsed._perdaSalarial || 0,
     total: currentParsed._total || 0,
+    source: currentParsed.source || 'fpf',
     raw: currentParsed.raw
   });
 
@@ -1948,8 +2036,9 @@ async function saveNomeacao() {
     return;
   }
 
+  const dest = currentParsed?.source === 'afb' ? 'afb' : 'lista';
   clearSMS();
-  showView('lista');
+  showView(dest);
 }
 
 function clearSMS() {
@@ -1958,7 +2047,10 @@ function clearSMS() {
   currentParsed = null;
 }
 
-function openAddManual() {
+let _manualSource = 'fpf';
+
+function openAddManual(source) {
+  _manualSource = source || 'fpf';
   ['manual-home','manual-away','manual-date','manual-time','manual-venue','manual-location','manual-km'].forEach(id => {
     document.getElementById(id).value = '';
   });
@@ -1966,6 +2058,8 @@ function openAddManual() {
   document.getElementById('manual-role').value = '1A';
   document.getElementById('add-manual-overlay').classList.add('open');
 }
+
+function openAddManualAfb() { openAddManual('afb'); }
 
 function closeAddManual(e) {
   if (e.target === document.getElementById('add-manual-overlay'))
@@ -2002,7 +2096,7 @@ async function saveManualNomeacao() {
   const { error } = await db.from('nomeacoes').insert({
     competition, home_team, away_team, venue, location, date, time,
     my_role, officials: [], km, premio, km_total: kmTotal, meal_total: mealTotal,
-    perda_salarial: perdaSalarial, total,
+    perda_salarial: perdaSalarial, total, source: _manualSource,
     raw: `Manual: ${home_team} vs ${away_team}`
   });
 
@@ -2012,7 +2106,7 @@ async function saveManualNomeacao() {
   if (error) { alert('Erro ao guardar: ' + error.message); return; }
 
   document.getElementById('add-manual-overlay').classList.remove('open');
-  renderLista();
+  if (_manualSource === 'afb') renderAfb(); else renderLista();
 }
 
 // ──────────────────────────────────────────────
@@ -2152,13 +2246,14 @@ async function renderLista() {
   const { data: list, error } = await db
     .from('nomeacoes')
     .select('*')
+    .or('source.eq.fpf,source.is.null')
     .order('created_at', { ascending: false });
 
   if (error || !list) {
     // Fallback: dados guardados localmente
     const cached = localStorage.getItem('nomeacoes_cache');
     if (cached) {
-      _listaCache = JSON.parse(cached);
+      _listaCache = JSON.parse(cached).filter(n => !n.source || n.source === 'fpf');
       document.getElementById('offline-banner').classList.add('show');
     } else {
       cont.innerHTML = `<div style="text-align:center;padding:40px;color:var(--red);">Erro ao carregar: ${error?.message || 'sem ligação'}</div>`;
@@ -2733,6 +2828,7 @@ function showView(name) {
   window.scrollTo({ top: 0, behavior: 'instant' });
   if (name === 'lista') renderLista();
   if (name === 'stats') renderStats();
+  if (name === 'afb') renderAfb();
 }
 
 let _fpfSub = 'nomeacoes';
@@ -2872,6 +2968,86 @@ async function deleteRecibo(e, id) {
   if (!confirm('Eliminar este recibo?')) return;
   await db.from('outros_recibos').delete().eq('id', id);
   renderRecibos();
+}
+
+// ──────────────────────────────────────────────
+// AFB
+// ──────────────────────────────────────────────
+let _afbCache = [];
+
+async function renderAfb() {
+  const cont = document.getElementById('afb-content');
+  cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">A carregar...</div>';
+
+  const { data: list, error } = await db
+    .from('nomeacoes')
+    .select('*')
+    .eq('source', 'afb')
+    .order('created_at', { ascending: false });
+
+  if (error || !list) {
+    cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Erro ao carregar.</div>';
+    return;
+  }
+
+  _afbCache = list;
+
+  if (list.length === 0) {
+    cont.innerHTML = '<div class="empty-state"><div class="icon">🏟️</div><div>Sem nomeações AFB.</div></div>';
+    return;
+  }
+
+  const today = new Date();
+  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const monthShort = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const groups = {};
+  list.forEach(n => {
+    const parts = (n.date || '').split('/');
+    const key = (parts[2] || '?') + '-' + (parts[1] || '?');
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(n);
+  });
+
+  cont.innerHTML = Object.keys(groups).sort((a,b) => b.localeCompare(a)).map(key => {
+    const [year, month] = key.split('-');
+    const monthLabel = (monthNames[parseInt(month)-1] || '') + ' ' + year;
+    const monthTotal = groups[key].reduce((s,n) => s + (n.total||0), 0);
+    const items = groups[key].map(n => {
+      const isPast = parseDate(n.date) < today;
+      const dayNum = (n.date||'').split('/')[0];
+      const monthStr = monthShort[parseInt((n.date||'').split('/')[1])-1] || '';
+      return `
+        <div class="nomeacao-item" onclick="openModal(${n.id})">
+          <div class="date-col">
+            <div class="day">${dayNum}</div>
+            <div class="month">${monthStr}</div>
+            <div class="time">${n.time||''}</div>
+          </div>
+          <div class="info-col">
+            <div class="teams-row">${n.home_team} <span style="color:var(--muted);font-weight:400">vs</span> ${n.away_team}</div>
+            <div class="meta-row">
+              <span class="badge badge-lp" style="font-size:10px;">${n.competition}</span>
+              &nbsp;<span style="color:var(--muted);font-size:11px;">${n.venue} · ${n.location}</span>
+              ${n.km > 0 ? `&nbsp;<span style="color:var(--muted);font-size:11px;">· ${n.km} km</span>` : ''}
+            </div>
+          </div>
+          <div class="amount-col">
+            <div class="total">${fmt(n.total||0)}</div>
+            <div class="comp" style="margin-top:4px;">${isPast ? '<span class="done-badge">Realizado</span>' : '<span class="pending-badge">Pendente</span>'}</div>
+          </div>
+          <button class="del-btn" onclick="deleteNomeacao(event,${n.id})">✕</button>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="month-group" id="afb-mg-${key}">
+        <div class="month-label" onclick="document.getElementById('afb-mg-${key}').classList.toggle('collapsed')">
+          <span>${monthLabel}<span class="month-chevron">▼</span></span>
+          <span class="month-total">${fmt(monthTotal)}</span>
+        </div>
+        <div class="month-items">${items}</div>
+      </div>`;
+  }).join('');
 }
 
 // ──────────────────────────────────────────────
