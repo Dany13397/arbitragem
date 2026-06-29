@@ -1997,6 +1997,7 @@ function renderListaContent() {
             <div class="meta-row">
               <span class="badge badge-lp" style="font-size:10px;">${n.competition}</span>
               &nbsp;Pav. ${n.venue} · ${n.location}
+              ${n.km > 0 ? `&nbsp;<span style="color:var(--muted);font-size:11px;">· ${n.km} km</span>` : ''}
               ${n.my_role !== '1A' && n.km > 0 ? `
                 ${!n.km_received ? '&nbsp;<span style="background:rgba(239,68,68,.2);color:#ef4444;border:1px solid rgba(239,68,68,.4);padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;">⚠ kms</span>' : ''}
                 &nbsp;<button onclick="markKmReceived(event,${n.id},${!n.km_received})" style="background:${n.km_received ? 'rgba(34,197,94,.15)' : 'rgba(100,100,100,.15)'};color:${n.km_received ? '#22c55e' : '#8892b0'};border:1px solid ${n.km_received ? 'rgba(34,197,94,.3)' : 'rgba(136,146,176,.3)'};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">${n.km_received ? '✓ Recebido' : '○ Recebido'}</button>
