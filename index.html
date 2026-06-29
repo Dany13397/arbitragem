@@ -1118,6 +1118,7 @@
   <div class="container">
     <div class="nomeacoes-header">
       <h2>Nomeações</h2>
+      <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddManual()">+ Adicionar</button>
     </div>
     <div class="period-selector" id="period-selector-lista"></div>
 
@@ -1212,6 +1213,77 @@
     <div class="stats-section">
       <div class="section-title">Classificações</div>
       <p style="color:var(--text2);font-size:.9rem;">Fórmula e fatores a definir em breve.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ MODAL ADICIONAR MANUAL ══════════════════ -->
+<div class="modal-overlay" id="add-manual-overlay" onclick="closeAddManual(event)">
+  <div class="modal" id="add-manual-modal">
+    <div class="modal-header">
+      <div class="modal-title">Adicionar Jogo</div>
+      <button class="modal-close" onclick="document.getElementById('add-manual-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <div class="detail-grid">
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Equipa Casa</label>
+            <input type="text" id="manual-home" class="edit-input" placeholder="ex: Sporting CP">
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Equipa Fora</label>
+            <input type="text" id="manual-away" class="edit-input" placeholder="ex: FC Porto">
+          </div>
+          <div class="detail-item">
+            <label>Data (DD/MM/AAAA)</label>
+            <input type="text" id="manual-date" class="edit-input" placeholder="ex: 15/03/2026">
+          </div>
+          <div class="detail-item">
+            <label>Hora (HH:MM)</label>
+            <input type="text" id="manual-time" class="edit-input" placeholder="ex: 17:00">
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Pavilhão</label>
+            <input type="text" id="manual-venue" class="edit-input" placeholder="ex: Pavilhão Municipal">
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Local (Cidade)</label>
+            <input type="text" id="manual-location" class="edit-input" placeholder="ex: Lisboa">
+          </div>
+          <div class="detail-item">
+            <label>Competição</label>
+            <select id="manual-competition" class="edit-input">
+              <option value="LP">LP</option>
+              <option value="CN 2D FTS">CN 2D FTS</option>
+              <option value="CN FEM S15 FTS">CN FEM S15 FTS</option>
+              <option value="TN FEM FTS">TN FEM FTS</option>
+              <option value="CN S19 I DIV FTS">CN S19 I DIV FTS</option>
+              <option value="CN S17 FTS">CN S17 FTS</option>
+              <option value="TN S15 FTS">TN S15 FTS</option>
+              <option value="TN S17 FTS">TN S17 FTS</option>
+            </select>
+          </div>
+          <div class="detail-item">
+            <label>Função</label>
+            <select id="manual-role" class="edit-input">
+              <option value="1A">1A</option>
+              <option value="2A">2A</option>
+              <option value="3A">3A</option>
+              <option value="4A">4A</option>
+              <option value="CRON">CRON</option>
+            </select>
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Km (ida e volta)</label>
+            <input type="number" id="manual-km" class="edit-input" placeholder="0" min="0">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveManualNomeacao()" id="manual-save-btn">💾 Guardar</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('add-manual-overlay').classList.remove('open')">Cancelar</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1732,6 +1804,61 @@ function clearSMS() {
   document.getElementById('sms-input').value = '';
   document.getElementById('parsed-result').style.display = 'none';
   currentParsed = null;
+}
+
+function openAddManual() {
+  ['manual-home','manual-away','manual-date','manual-time','manual-venue','manual-location','manual-km'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('manual-competition').value = 'LP';
+  document.getElementById('manual-role').value = '1A';
+  document.getElementById('add-manual-overlay').classList.add('open');
+}
+
+function closeAddManual(e) {
+  if (e.target === document.getElementById('add-manual-overlay'))
+    document.getElementById('add-manual-overlay').classList.remove('open');
+}
+
+async function saveManualNomeacao() {
+  const home_team  = document.getElementById('manual-home').value.trim();
+  const away_team  = document.getElementById('manual-away').value.trim();
+  const date       = document.getElementById('manual-date').value.trim();
+  const time       = document.getElementById('manual-time').value.trim();
+  const venue      = document.getElementById('manual-venue').value.trim();
+  const location   = document.getElementById('manual-location').value.trim();
+  const competition= document.getElementById('manual-competition').value;
+  const my_role    = document.getElementById('manual-role').value;
+  const km         = parseInt(document.getElementById('manual-km').value) || 0;
+
+  if (!home_team || !away_team || !date || !time) {
+    alert('Preenche pelo menos as equipas, data e hora.');
+    return;
+  }
+
+  const fees = FEES[competition] || {};
+  const premio = fees[my_role] || 0;
+  const kmTotal = km > 0 ? km * 2 * KM_RATE : 0;
+  const mealTotal = km > 0 ? (km > MEAL_KM_THRESHOLD ? MEAL * 2 : MEAL) : 0;
+  const total = premio + kmTotal + mealTotal;
+
+  const btn = document.getElementById('manual-save-btn');
+  btn.textContent = 'A guardar...';
+  btn.disabled = true;
+
+  const { error } = await db.from('nomeacoes').insert({
+    competition, home_team, away_team, venue, location, date, time,
+    my_role, officials: [], km, premio, km_total: kmTotal, meal_total: mealTotal, total,
+    raw: `Manual: ${home_team} vs ${away_team}`
+  });
+
+  btn.textContent = '💾 Guardar';
+  btn.disabled = false;
+
+  if (error) { alert('Erro ao guardar: ' + error.message); return; }
+
+  document.getElementById('add-manual-overlay').classList.remove('open');
+  renderLista();
 }
 
 // ──────────────────────────────────────────────
