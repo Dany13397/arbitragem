@@ -1583,6 +1583,16 @@ const MY_NAME = 'Dany Garcez';
 const KM_RATE = 0.36;
 const MEAL = 17.50;
 const MEAL_KM_THRESHOLD = 150;
+const PERDA_SALARIAL = 30;
+
+// Devolve 30 se o jogo for 2ª a 6ª feira, senão 0
+function calcPerdaSalarial(dateStr) {
+  if (!dateStr) return 0;
+  const [d, m, y] = dateStr.split('/');
+  if (!d || !m || !y) return 0;
+  const dow = new Date(parseInt(y), parseInt(m) - 1, parseInt(d)).getDay();
+  return (dow >= 1 && dow <= 5) ? PERDA_SALARIAL : 0;
+}
 
 const FEES = {
   LP:             { '1A': 300, '2A': 300, '3A': 150, '4A': 150, 'CRON': 120 },
@@ -1822,7 +1832,8 @@ function recalculate() {
   const kmTotal = km * 2 * KM_RATE;
   const doubleMeal = km > MEAL_KM_THRESHOLD;
   const mealTotal = doubleMeal ? MEAL * 2 : MEAL;
-  const total = premio + kmTotal + mealTotal;
+  const perdaSalarial = calcPerdaSalarial(currentParsed.date);
+  const total = premio + kmTotal + mealTotal + perdaSalarial;
 
   document.getElementById('double-meal-warning').style.display = doubleMeal ? 'flex' : 'none';
 
@@ -1840,12 +1851,18 @@ function recalculate() {
       <span class="desc">Subsídio de refeição${doubleMeal ? ' (×2)' : ''}</span>
       <span class="amount">${fmt(mealTotal)}</span>
     </div>
+    ${perdaSalarial > 0 ? `
+    <div class="calc-line">
+      <span class="desc">Perda salarial (dia útil)</span>
+      <span class="amount">${fmt(perdaSalarial)}</span>
+    </div>` : ''}
   `;
 
   currentParsed._km = km;
   currentParsed._premio = premio;
   currentParsed._kmTotal = kmTotal;
   currentParsed._mealTotal = mealTotal;
+  currentParsed._perdaSalarial = perdaSalarial;
   currentParsed._total = total;
 
   document.getElementById('calc-total-amount').textContent = fmt(total);
@@ -1886,6 +1903,7 @@ async function saveNomeacao() {
     premio: currentParsed._premio || 0,
     km_total: currentParsed._kmTotal || 0,
     meal_total: currentParsed._mealTotal || 0,
+    perda_salarial: currentParsed._perdaSalarial || 0,
     total: currentParsed._total || 0,
     raw: currentParsed.raw
   });
@@ -1941,7 +1959,8 @@ async function saveManualNomeacao() {
   const premio = fees[my_role] || 0;
   const kmTotal = km > 0 ? km * 2 * KM_RATE : 0;
   const mealTotal = km > 0 ? (km > MEAL_KM_THRESHOLD ? MEAL * 2 : MEAL) : 0;
-  const total = premio + kmTotal + mealTotal;
+  const perdaSalarial = calcPerdaSalarial(date);
+  const total = premio + kmTotal + mealTotal + perdaSalarial;
 
   const btn = document.getElementById('manual-save-btn');
   btn.textContent = 'A guardar...';
@@ -1949,7 +1968,8 @@ async function saveManualNomeacao() {
 
   const { error } = await db.from('nomeacoes').insert({
     competition, home_team, away_team, venue, location, date, time,
-    my_role, officials: [], km, premio, km_total: kmTotal, meal_total: mealTotal, total,
+    my_role, officials: [], km, premio, km_total: kmTotal, meal_total: mealTotal,
+    perda_salarial: perdaSalarial, total,
     raw: `Manual: ${home_team} vs ${away_team}`
   });
 
@@ -2297,14 +2317,15 @@ function openModal(id) {
     </tr>`).join('');
 
   document.getElementById('modal-km-input').value = n.km || 0;
-  renderModalCalc(n.my_role, n.competition, n.km || 0, n.premio, n.km_total, n.meal_total, n.total);
+  renderModalCalc(n.my_role, n.competition, n.km || 0, n.premio, n.km_total, n.meal_total, n.total, n.perda_salarial);
   document.getElementById('modal-overlay').classList.add('open');
 }
 
 let _modalId = null;
 
-function renderModalCalc(role, comp, km, premio, kmTotal, mealTotal, total) {
+function renderModalCalc(role, comp, km, premio, kmTotal, mealTotal, total, perdaSalarial) {
   const doubleMeal = km > MEAL_KM_THRESHOLD;
+  const perda = perdaSalarial || 0;
   document.getElementById('modal-calc').innerHTML = `
     <div class="modal-calc-line">
       <span class="desc">Prémio de jogo (${role} — ${comp})</span>
@@ -2318,6 +2339,11 @@ function renderModalCalc(role, comp, km, premio, kmTotal, mealTotal, total) {
       <span class="desc">Subsídio de refeição${doubleMeal ? ' (×2)' : ''}</span>
       <span class="amount">${fmt(mealTotal)}</span>
     </div>
+    ${perda > 0 ? `
+    <div class="modal-calc-line">
+      <span class="desc">Perda salarial (dia útil)</span>
+      <span class="amount">${fmt(perda)}</span>
+    </div>` : ''}
     <div class="modal-total-line">
       <span class="label">Total</span>
       <span class="amount">${fmt(total)}</span>
@@ -2358,7 +2384,8 @@ function previewModalCalc() {
   const kmTotal = km * 2 * KM_RATE;
   const doubleMeal = km > MEAL_KM_THRESHOLD;
   const mealTotal = doubleMeal ? MEAL * 2 : MEAL;
-  renderModalCalc(n.my_role, n.competition, km, premio, kmTotal, mealTotal, premio + kmTotal + mealTotal);
+  const perdaSalarial = calcPerdaSalarial(n.date);
+  renderModalCalc(n.my_role, n.competition, km, premio, kmTotal, mealTotal, premio + kmTotal + mealTotal + perdaSalarial, perdaSalarial);
 }
 
 async function saveModalKm() {
@@ -2370,20 +2397,21 @@ async function saveModalKm() {
   const kmTotal = km * 2 * KM_RATE;
   const doubleMeal = km > MEAL_KM_THRESHOLD;
   const mealTotal = doubleMeal ? MEAL * 2 : MEAL;
-  const total = premio + kmTotal + mealTotal;
+  const perdaSalarial = calcPerdaSalarial(n.date);
+  const total = premio + kmTotal + mealTotal + perdaSalarial;
 
   const btn = document.querySelector('#modal .btn-primary');
   btn.textContent = 'A guardar...';
   btn.disabled = true;
 
-  const { error } = await db.from('nomeacoes').update({ km, km_total: kmTotal, meal_total: mealTotal, total }).eq('id', _modalId);
+  const { error } = await db.from('nomeacoes').update({ km, km_total: kmTotal, meal_total: mealTotal, perda_salarial: perdaSalarial, total }).eq('id', _modalId);
 
   btn.textContent = 'Guardar';
   btn.disabled = false;
 
   if (error) { alert('Erro: ' + error.message); return; }
 
-  renderModalCalc(n.my_role, n.competition, km, premio, kmTotal, mealTotal, total);
+  renderModalCalc(n.my_role, n.competition, km, premio, kmTotal, mealTotal, total, perdaSalarial);
   renderLista();
 }
 
@@ -2447,21 +2475,22 @@ async function saveEditNomeacao() {
   const km = n.km || 0;
   const km_total = km * 2 * KM_RATE;
   const meal_total = km > MEAL_KM_THRESHOLD ? MEAL * 2 : MEAL;
-  const total = premio + km_total + meal_total;
+  const perda_salarial = calcPerdaSalarial(date);
+  const total = premio + km_total + meal_total + perda_salarial;
 
   const btn = document.getElementById('edit-save-btn');
   btn.textContent = 'A guardar...'; btn.disabled = true;
 
   const { error } = await db.from('nomeacoes').update({
     home_team, away_team, date, time, venue, location,
-    competition, my_role, premio, km_total, meal_total, total
+    competition, my_role, premio, km_total, meal_total, perda_salarial, total
   }).eq('id', _modalId);
 
   btn.textContent = '💾 Guardar alterações'; btn.disabled = false;
   if (error) { alert('Erro: ' + error.message); return; }
 
   // Atualiza cache local
-  Object.assign(n, { home_team, away_team, date, time, venue, location, competition, my_role, premio, km_total, meal_total, total });
+  Object.assign(n, { home_team, away_team, date, time, venue, location, competition, my_role, premio, km_total, meal_total, perda_salarial, total });
 
   // Volta ao modo normal com dados atualizados
   toggleEditMode();
@@ -2502,11 +2531,12 @@ function renderStatsContent() {
   const list = getListByPeriod();
 
   // ── Resumo financeiro ──
-  const totalEur     = list.reduce((s, n) => s + (n.total || 0), 0);
-  const totalPremio  = list.reduce((s, n) => s + (n.premio || 0), 0);
-  const totalKmEur   = list.reduce((s, n) => s + (n.km_total || 0), 0);
-  const totalMeal    = list.reduce((s, n) => s + (n.meal_total || 0), 0);
-  const avgPerGame   = list.length ? totalEur / list.length : 0;
+  const totalEur        = list.reduce((s, n) => s + (n.total || 0), 0);
+  const totalPremio     = list.reduce((s, n) => s + (n.premio || 0), 0);
+  const totalKmEur      = list.reduce((s, n) => s + (n.km_total || 0), 0);
+  const totalMeal       = list.reduce((s, n) => s + (n.meal_total || 0), 0);
+  const totalPerdaSalar = list.reduce((s, n) => s + (n.perda_salarial || 0), 0);
+  const avgPerGame      = list.length ? totalEur / list.length : 0;
 
   document.getElementById('s-finance-cards').innerHTML = `
     <div class="big-stat">
@@ -2528,14 +2558,21 @@ function renderStatsContent() {
       <div class="label">Subsídios Refeição</div>
       <div class="value">${fmt(totalMeal)}</div>
       <div class="sub">${totalEur ? Math.round(totalMeal/totalEur*100) : 0}% do total</div>
-    </div>`;
+    </div>
+    ${totalPerdaSalar > 0 ? `
+    <div class="big-stat">
+      <div class="label">Perda Salarial</div>
+      <div class="value">${fmt(totalPerdaSalar)}</div>
+      <div class="sub">${totalEur ? Math.round(totalPerdaSalar/totalEur*100) : 0}% do total</div>
+    </div>` : ''}`;
 
-  const maxBreakdown = Math.max(totalPremio, totalKmEur, totalMeal, 1);
+  const maxBreakdown = Math.max(totalPremio, totalKmEur, totalMeal, totalPerdaSalar, 1);
   document.getElementById('s-breakdown').innerHTML = [
-    { label: 'Prémios', val: totalPremio, color: '#4f7fff' },
-    { label: 'Kms',     val: totalKmEur,  color: '#7c3aed' },
-    { label: 'Refeição',val: totalMeal,   color: '#22c55e' }
-  ].map(r => `
+    { label: 'Prémios',        val: totalPremio,     color: '#4f7fff' },
+    { label: 'Kms',            val: totalKmEur,      color: '#7c3aed' },
+    { label: 'Refeição',       val: totalMeal,       color: '#22c55e' },
+    { label: 'Perda Salarial', val: totalPerdaSalar, color: '#f59e0b' }
+  ].filter(r => r.val > 0).map(r => `
     <div class="breakdown-bar-row">
       <div class="bar-label">${r.label}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.round(r.val/maxBreakdown*100)}%;background:${r.color}"></div></div>
@@ -2705,10 +2742,11 @@ async function saveRecibo() {
   const km   = parseInt(document.getElementById('recibo-km').value) || 0;
   if (!date) { alert('Preenche a data.'); return; }
 
-  const kmTotal   = km > 0 ? km * 2 * KM_RATE : 0;
-  const mealTotal = km > 0 ? (km > MEAL_KM_THRESHOLD ? MEAL * 2 : MEAL) : 0;
+  const kmTotal        = km > 0 ? km * 2 * KM_RATE : 0;
+  const mealTotal      = km > 0 ? (km > MEAL_KM_THRESHOLD ? MEAL * 2 : MEAL) : 0;
+  const perdaSalarial  = calcPerdaSalarial(date);
 
-  let row = { type: _reciboType, date, km, km_total: kmTotal, meal_total: mealTotal };
+  let row = { type: _reciboType, date, km, km_total: kmTotal, meal_total: mealTotal, perda_salarial: perdaSalarial };
 
   if (_reciboType === 'selecao') {
     const home_team  = document.getElementById('recibo-home').value.trim();
@@ -2721,11 +2759,11 @@ async function saveRecibo() {
     const premio     = parseFloat(document.getElementById('recibo-premio').value) || 0;
     if (!home_team || !away_team) { alert('Preenche as equipas.'); return; }
     row = { ...row, home_team, away_team, time, my_role, venue, location, competition, premio };
-    row.total = premio + kmTotal + mealTotal;
+    row.total = premio + kmTotal + mealTotal + perdaSalarial;
   } else {
     row.description = document.getElementById('recibo-desc').value.trim();
     row.premio = 0;
-    row.total  = kmTotal + mealTotal;
+    row.total  = kmTotal + mealTotal + perdaSalarial;
   }
 
   const btn = document.getElementById('recibo-save-btn');
