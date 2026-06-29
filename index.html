@@ -493,6 +493,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     .month-label .month-total {
@@ -500,6 +503,16 @@
       color: var(--accent);
       font-size: 13px;
     }
+
+    .month-label .month-chevron {
+      font-size: 10px;
+      margin-left: 6px;
+      transition: transform .2s;
+      display: inline-block;
+    }
+
+    .month-group.collapsed .month-chevron { transform: rotate(-90deg); }
+    .month-group.collapsed .month-items { display: none; }
 
     /* ── MODAL ── */
     .modal-overlay {
@@ -2261,12 +2274,12 @@ function renderListaContent() {
     }).join('');
 
     return `
-      <div class="month-group">
-        <div class="month-label">
-          <span>${monthLabel}</span>
+      <div class="month-group" id="mg-${key}">
+        <div class="month-label" onclick="toggleMonthGroup('${key}')">
+          <span>${monthLabel}<span class="month-chevron">▼</span></span>
           <span class="month-total">${fmt(monthTotal)}</span>
         </div>
-        ${items}
+        <div class="month-items">${items}</div>
       </div>`;
   }).join('');
 }
@@ -2274,6 +2287,10 @@ function renderListaContent() {
 function parseDate(str) {
   const [d, m, y] = str.split('/');
   return new Date(y, m - 1, d);
+}
+
+function toggleMonthGroup(key) {
+  document.getElementById('mg-' + key).classList.toggle('collapsed');
 }
 
 // ──────────────────────────────────────────────
