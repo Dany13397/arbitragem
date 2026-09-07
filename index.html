@@ -1300,6 +1300,7 @@
           <div style="display:flex;gap:8px;">
             <button id="recibo-type-selecao" class="btn btn-primary" style="flex:1;font-size:13px;" onclick="setReciboType('selecao')">🏅 Seleção</button>
             <button id="recibo-type-ara" class="btn btn-ghost" style="flex:1;font-size:13px;" onclick="setReciboType('ara')">🚗 ARA</button>
+            <button id="recibo-type-emd" class="btn btn-ghost" style="flex:1;font-size:13px;" onclick="setReciboType('emd')">📋 EMD</button>
           </div>
         </div>
 
@@ -3184,17 +3185,12 @@ function setReciboType(type) {
   _reciboType = type;
   const selFields = ['recibo-f-home','recibo-f-away','recibo-f-time','recibo-f-role','recibo-f-venue','recibo-f-location','recibo-f-comp','recibo-f-premio'];
   const araFields = ['recibo-f-desc'];
-  if (type === 'selecao') {
-    selFields.forEach(id => document.getElementById(id).style.display = '');
-    araFields.forEach(id => document.getElementById(id).style.display = 'none');
-    document.getElementById('recibo-type-selecao').className = 'btn btn-primary';
-    document.getElementById('recibo-type-ara').className = 'btn btn-ghost';
-  } else {
-    selFields.forEach(id => document.getElementById(id).style.display = 'none');
-    araFields.forEach(id => document.getElementById(id).style.display = '');
-    document.getElementById('recibo-type-selecao').className = 'btn btn-ghost';
-    document.getElementById('recibo-type-ara').className = 'btn btn-primary';
-  }
+  selFields.forEach(id => document.getElementById(id).style.display = type === 'selecao' ? '' : 'none');
+  araFields.forEach(id => document.getElementById(id).style.display = type === 'selecao' ? 'none' : '');
+  document.getElementById('recibo-type-selecao').className = type === 'selecao' ? 'btn btn-primary' : 'btn btn-ghost';
+  document.getElementById('recibo-type-ara').className     = type === 'ara'     ? 'btn btn-primary' : 'btn btn-ghost';
+  document.getElementById('recibo-type-emd').className     = type === 'emd'     ? 'btn btn-primary' : 'btn btn-ghost';
+  document.getElementById('recibo-desc').placeholder = type === 'emd' ? 'ex: EMD — Exame Médico' : 'ex: ARA — Braga vs Porto';
 }
 
 function openAddRecibo() {
@@ -3227,7 +3223,7 @@ function openEditRecibo(e, id) {
   document.getElementById('recibo-comp').value     = r.competition || '';
   document.getElementById('recibo-premio').value   = r.premio || '';
   document.getElementById('recibo-desc').value     = r.description || '';
-  setReciboType(r.type === 'ara' ? 'ara' : 'selecao');
+  setReciboType(r.type || 'selecao');
   document.getElementById('recibo-modal-title').textContent = 'Editar Recibo';
   document.getElementById('recibo-save-btn').textContent = '💾 Guardar alterações';
   document.getElementById('recibo-overlay').classList.add('open');
@@ -3300,13 +3296,16 @@ async function renderRecibos() {
     const [d, m, y] = (r.date || '').split('/');
     const dayNum   = d || '?';
     const monthStr = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m)-1] || '';
+    const typeLabel = r.type === 'selecao' ? '🏅 Seleção' : (r.type === 'emd' ? '📋 EMD' : '🚗 ARA');
     const title    = r.type === 'selecao'
       ? `${r.home_team || '?'} vs ${r.away_team || '?'}`
-      : (r.description || 'ARA');
+      : (r.description || (r.type === 'emd' ? 'EMD' : 'ARA'));
     const sub      = r.type === 'selecao'
       ? `${r.competition || ''}${r.my_role ? ' · ' + r.my_role : ''}`
-      : 'ARA';
+      : (r.type === 'emd' ? 'EMD' : 'ARA');
     const kmBadge  = r.km > 0 ? `<span style="color:var(--muted);font-size:11px;">· ${r.km} km</span>` : '';
+    const mealBadge = r.meal_total > 0 ? `<span style="color:var(--muted);font-size:11px;">· Refeição ${fmt(r.meal_total)}</span>` : '';
+    const perdaBadge = r.perda_salarial > 0 ? `<span style="color:var(--muted);font-size:11px;">· Perda Sal. ${fmt(r.perda_salarial)}</span>` : '';
     return `
       <div class="nomeacao-item" style="display:flex;align-items:center;gap:12px;" onclick="openEditRecibo(event,${r.id})">
         <div class="date-col">
@@ -3316,9 +3315,11 @@ async function renderRecibos() {
         <div class="info-col" style="flex:1;min-width:0;">
           <div class="teams-row">${title}</div>
           <div class="meta-row" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <span class="badge badge-lp" style="font-size:10px;">${r.type === 'selecao' ? '🏅 Seleção' : '🚗 ARA'}</span>
+            <span class="badge badge-lp" style="font-size:10px;">${typeLabel}</span>
             ${sub ? `<span style="color:var(--muted);font-size:11px;">${sub}</span>` : ''}
             ${kmBadge}
+            ${mealBadge}
+            ${perdaBadge}
             <button onclick="markReciboPago(event,${r.id},${!r.paid})" style="background:${r.paid ? 'rgba(34,197,94,.15)' : 'rgba(100,100,100,.15)'};color:${r.paid ? '#22c55e' : '#8892b0'};border:1px solid ${r.paid ? 'rgba(34,197,94,.3)' : 'rgba(136,146,176,.3)'};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">${r.paid ? '✓ Pago' : '○ Pago'}</button>
           </div>
         </div>
