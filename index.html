@@ -1289,7 +1289,7 @@
 <div class="modal-overlay" id="recibo-overlay" onclick="closeReciboModal(event)">
   <div class="modal" id="recibo-modal">
     <div class="modal-header">
-      <div class="modal-title">Novo Recibo</div>
+      <div class="modal-title" id="recibo-modal-title">Novo Recibo</div>
       <button class="modal-close" onclick="document.getElementById('recibo-overlay').classList.remove('open')">✕</button>
     </div>
     <div class="modal-body">
@@ -3177,6 +3177,8 @@ async function renderCat() {
 // OUTROS RECIBOS
 // ──────────────────────────────────────────────
 let _reciboType = 'selecao';
+let _editingReciboId = null;
+let _recibosCache = [];
 
 function setReciboType(type) {
   _reciboType = type;
@@ -3196,6 +3198,7 @@ function setReciboType(type) {
 }
 
 function openAddRecibo() {
+  _editingReciboId = null;
   _reciboType = 'selecao';
   ['recibo-date','recibo-km','recibo-home','recibo-away','recibo-time','recibo-venue','recibo-location','recibo-comp','recibo-desc'].forEach(id => {
     document.getElementById(id).value = '';
@@ -3203,6 +3206,30 @@ function openAddRecibo() {
   document.getElementById('recibo-premio').value = '';
   document.getElementById('recibo-role').value = '1A';
   setReciboType('selecao');
+  document.getElementById('recibo-modal-title').textContent = 'Novo Recibo';
+  document.getElementById('recibo-save-btn').textContent = '💾 Guardar';
+  document.getElementById('recibo-overlay').classList.add('open');
+}
+
+function openEditRecibo(e, id) {
+  e.stopPropagation();
+  const r = _recibosCache.find(x => x.id === id);
+  if (!r) return;
+  _editingReciboId = id;
+  document.getElementById('recibo-date').value     = r.date || '';
+  document.getElementById('recibo-km').value       = r.km || '';
+  document.getElementById('recibo-home').value     = r.home_team || '';
+  document.getElementById('recibo-away').value     = r.away_team || '';
+  document.getElementById('recibo-time').value     = r.time || '';
+  document.getElementById('recibo-role').value     = r.my_role || '1A';
+  document.getElementById('recibo-venue').value    = r.venue || '';
+  document.getElementById('recibo-location').value = r.location || '';
+  document.getElementById('recibo-comp').value     = r.competition || '';
+  document.getElementById('recibo-premio').value   = r.premio || '';
+  document.getElementById('recibo-desc').value     = r.description || '';
+  setReciboType(r.type === 'ara' ? 'ara' : 'selecao');
+  document.getElementById('recibo-modal-title').textContent = 'Editar Recibo';
+  document.getElementById('recibo-save-btn').textContent = '💾 Guardar alterações';
   document.getElementById('recibo-overlay').classList.add('open');
 }
 
@@ -3241,15 +3268,19 @@ async function saveRecibo() {
   }
 
   const btn = document.getElementById('recibo-save-btn');
+  const savingLabel = _editingReciboId ? '💾 Guardar alterações' : '💾 Guardar';
   btn.textContent = 'A guardar...';
   btn.disabled = true;
 
-  const { error } = await db.from('outros_recibos').insert(row);
+  const { error } = _editingReciboId
+    ? await db.from('outros_recibos').update(row).eq('id', _editingReciboId)
+    : await db.from('outros_recibos').insert(row);
 
-  btn.textContent = '💾 Guardar';
+  btn.textContent = savingLabel;
   btn.disabled = false;
 
   if (error) { alert('Erro ao guardar: ' + error.message); return; }
+  _editingReciboId = null;
   document.getElementById('recibo-overlay').classList.remove('open');
   renderRecibos();
 }
@@ -3258,9 +3289,12 @@ async function renderRecibos() {
   const el = document.getElementById('recibos-content');
   const { data, error } = await db.from('outros_recibos').select('*').order('date', { ascending: false });
   if (error || !data || data.length === 0) {
+    _recibosCache = [];
     el.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px 0;">Sem recibos registados.</p>';
     return;
   }
+
+  _recibosCache = data;
 
   el.innerHTML = data.map(r => {
     const [d, m, y] = (r.date || '').split('/');
@@ -3274,7 +3308,7 @@ async function renderRecibos() {
       : 'ARA';
     const kmBadge  = r.km > 0 ? `<span style="color:var(--muted);font-size:11px;">· ${r.km} km</span>` : '';
     return `
-      <div class="nomeacao-item" style="display:flex;align-items:center;gap:12px;">
+      <div class="nomeacao-item" style="display:flex;align-items:center;gap:12px;" onclick="openEditRecibo(event,${r.id})">
         <div class="date-col">
           <div class="day">${dayNum}</div>
           <div class="month">${monthStr}</div>
@@ -3285,14 +3319,23 @@ async function renderRecibos() {
             <span class="badge badge-lp" style="font-size:10px;">${r.type === 'selecao' ? '🏅 Seleção' : '🚗 ARA'}</span>
             ${sub ? `<span style="color:var(--muted);font-size:11px;">${sub}</span>` : ''}
             ${kmBadge}
+            <button onclick="markReciboPago(event,${r.id},${!r.paid})" style="background:${r.paid ? 'rgba(34,197,94,.15)' : 'rgba(100,100,100,.15)'};color:${r.paid ? '#22c55e' : '#8892b0'};border:1px solid ${r.paid ? 'rgba(34,197,94,.3)' : 'rgba(136,146,176,.3)'};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">${r.paid ? '✓ Pago' : '○ Pago'}</button>
           </div>
         </div>
         <div class="amount-col">
           <div class="total">${fmt(r.total || 0)}</div>
         </div>
+        <button class="del-btn" onclick="openEditRecibo(event,${r.id})" title="Editar">✎</button>
         <button class="del-btn" onclick="deleteRecibo(event,${r.id})">✕</button>
       </div>`;
   }).join('');
+}
+
+async function markReciboPago(e, id, value) {
+  e.stopPropagation();
+  const { error } = await db.from('outros_recibos').update({ paid: value }).eq('id', id);
+  if (error) { alert('Erro: ' + error.message); return; }
+  renderRecibos();
 }
 
 async function deleteRecibo(e, id) {
