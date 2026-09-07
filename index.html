@@ -3291,6 +3291,49 @@ async function saveRecibo() {
   renderRecibos();
 }
 
+function sumRecibosList(list) {
+  return {
+    total:      list.reduce((s, r) => s + (r.total || 0), 0),
+    km_total:   list.reduce((s, r) => s + (r.km_total || 0), 0),
+    meal_total: list.reduce((s, r) => s + (r.meal_total || 0), 0),
+    perda:      list.reduce((s, r) => s + (r.perda_salarial || 0), 0),
+  };
+}
+
+function renderRecibosStats(data) {
+  const now = new Date();
+  const curM = now.getMonth() + 1, curY = now.getFullYear();
+  const monthPending = data.filter(r => {
+    const [, m, y] = (r.date || '').split('/');
+    return !r.paid && parseInt(m) === curM && parseInt(y) === curY;
+  });
+  const seasonPaid = data.filter(r => r.paid && getSeason(r.date) === getCurrentSeason());
+
+  const sMonth  = sumRecibosList(monthPending);
+  const sSeason = sumRecibosList(seasonPaid);
+
+  const breakdown = s => `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+      <span style="font-size:11px;color:var(--muted);">🚗 Kms <b style="color:var(--text);">${fmt(s.km_total)}</b></span>
+      <span style="font-size:11px;color:var(--muted);">🍽️ Refeição <b style="color:var(--text);">${fmt(s.meal_total)}</b></span>
+      <span style="font-size:11px;color:var(--muted);">💼 Perda Sal. <b style="color:var(--text);">${fmt(s.perda)}</b></span>
+    </div>`;
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px;">
+      <div class="stat-card">
+        <div class="stat-label">A Receber Este Mês</div>
+        <div class="stat-value" style="font-size:20px;">${fmt(sMonth.total)}</div>
+        ${breakdown(sMonth)}
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Recebido Esta Época</div>
+        <div class="stat-value" style="font-size:20px;color:#22c55e;">${fmt(sSeason.total)}</div>
+        ${breakdown(sSeason)}
+      </div>
+    </div>`;
+}
+
 async function renderRecibos() {
   const el = document.getElementById('recibos-content');
   const { data, error } = await db.from('outros_recibos').select('*').order('date', { ascending: false });
@@ -3302,7 +3345,7 @@ async function renderRecibos() {
 
   _recibosCache = data;
 
-  el.innerHTML = data.map(r => {
+  el.innerHTML = renderRecibosStats(data) + data.map(r => {
     const [d, m, y] = (r.date || '').split('/');
     const dayNum   = d || '?';
     const monthStr = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m)-1] || '';
