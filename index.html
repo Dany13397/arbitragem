@@ -1314,6 +1314,18 @@
             <label>Km (ida e volta)</label>
             <input type="number" id="recibo-km" class="edit-input" placeholder="0" min="0">
           </div>
+          <div class="detail-item">
+            <label>Subsídio de Km (€)</label>
+            <input type="number" id="recibo-km-total" class="edit-input" placeholder="0.00" min="0" step="0.01">
+          </div>
+          <div class="detail-item">
+            <label>Subsídio de Refeição (€)</label>
+            <input type="number" id="recibo-meal-total" class="edit-input" placeholder="0.00" min="0" step="0.01">
+          </div>
+          <div class="detail-item">
+            <label>Perda Salarial (€)</label>
+            <input type="number" id="recibo-perda" class="edit-input" placeholder="0.00" min="0" step="0.01">
+          </div>
 
           <!-- Campos só Seleção -->
           <div class="detail-item" id="recibo-f-home" style="grid-column:span 2;">
@@ -3196,7 +3208,7 @@ function setReciboType(type) {
 function openAddRecibo() {
   _editingReciboId = null;
   _reciboType = 'selecao';
-  ['recibo-date','recibo-km','recibo-home','recibo-away','recibo-time','recibo-venue','recibo-location','recibo-comp','recibo-desc'].forEach(id => {
+  ['recibo-date','recibo-km','recibo-km-total','recibo-meal-total','recibo-perda','recibo-home','recibo-away','recibo-time','recibo-venue','recibo-location','recibo-comp','recibo-desc'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('recibo-premio').value = '';
@@ -3214,6 +3226,9 @@ function openEditRecibo(e, id) {
   _editingReciboId = id;
   document.getElementById('recibo-date').value     = r.date || '';
   document.getElementById('recibo-km').value       = r.km || '';
+  document.getElementById('recibo-km-total').value   = r.km_total || '';
+  document.getElementById('recibo-meal-total').value = r.meal_total || '';
+  document.getElementById('recibo-perda').value       = r.perda_salarial || '';
   document.getElementById('recibo-home').value     = r.home_team || '';
   document.getElementById('recibo-away').value     = r.away_team || '';
   document.getElementById('recibo-time').value     = r.time || '';
@@ -3239,9 +3254,9 @@ async function saveRecibo() {
   const km   = parseInt(document.getElementById('recibo-km').value) || 0;
   if (!date) { alert('Preenche a data.'); return; }
 
-  const kmTotal        = km > 0 ? km * 2 * KM_RATE : 0;
-  const mealTotal      = km > 0 ? MEAL : 0;
-  const perdaSalarial  = calcPerdaSalarial(date);
+  const kmTotal        = parseFloat(document.getElementById('recibo-km-total').value) || 0;
+  const mealTotal      = parseFloat(document.getElementById('recibo-meal-total').value) || 0;
+  const perdaSalarial  = parseFloat(document.getElementById('recibo-perda').value) || 0;
 
   let row = { type: _reciboType, date, km, km_total: kmTotal, meal_total: mealTotal, perda_salarial: perdaSalarial };
 
