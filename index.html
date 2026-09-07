@@ -3240,7 +3240,7 @@ async function saveRecibo() {
   if (!date) { alert('Preenche a data.'); return; }
 
   const kmTotal        = km > 0 ? km * 2 * KM_RATE : 0;
-  const mealTotal      = km > 0 ? (km > MEAL_KM_THRESHOLD ? MEAL * 2 : MEAL) : 0;
+  const mealTotal      = km > 0 ? MEAL : 0;
   const perdaSalarial  = calcPerdaSalarial(date);
 
   let row = { type: _reciboType, date, km, km_total: kmTotal, meal_total: mealTotal, perda_salarial: perdaSalarial };
