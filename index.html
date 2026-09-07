@@ -1177,6 +1177,7 @@
         </div>
       </div>
       <div class="stats-row" id="stats-row"></div>
+      <div id="lista-financeiro"></div>
       <div id="lista-content"></div>
     </div>
 
@@ -1209,6 +1210,7 @@
         <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddManualAfb()">+ Adicionar</button>
       </div>
       <div class="stats-row" id="afb-stats-row"></div>
+      <div id="afb-financeiro"></div>
       <div id="afb-content"></div>
     </div>
 
@@ -2467,6 +2469,8 @@ function renderListaContent() {
     </div>
   `;
 
+  document.getElementById('lista-financeiro').innerHTML = renderFinanceStatsBlock(_listaCache);
+
   // Filter counter
   const countEl = document.getElementById('filter-count');
   const hasActiveFilter = _filters.search || _filters.comp || _filters.role || _filters.status;
@@ -2547,6 +2551,7 @@ function renderListaContent() {
                 ${!n.km_received ? '&nbsp;<span style="background:rgba(239,68,68,.2);color:#ef4444;border:1px solid rgba(239,68,68,.4);padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;">⚠ kms</span>' : ''}
                 &nbsp;<button onclick="markKmReceived(event,${n.id},${!n.km_received})" style="background:${n.km_received ? 'rgba(34,197,94,.15)' : 'rgba(100,100,100,.15)'};color:${n.km_received ? '#22c55e' : '#8892b0'};border:1px solid ${n.km_received ? 'rgba(34,197,94,.3)' : 'rgba(136,146,176,.3)'};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">${n.km_received ? '✓ Recebido' : '○ Recebido'}</button>
               ` : ''}
+              &nbsp;<button onclick="markNomeacaoPago(event,${n.id},${!n.paid},'fpf')" style="background:${n.paid ? 'rgba(34,197,94,.15)' : 'rgba(100,100,100,.15)'};color:${n.paid ? '#22c55e' : '#8892b0'};border:1px solid ${n.paid ? 'rgba(34,197,94,.3)' : 'rgba(136,146,176,.3)'};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">${n.paid ? '✓ Pago' : '○ Pago'}</button>
             </div>
           </div>
           <div class="amount-col">
@@ -2804,6 +2809,13 @@ async function markKmReceived(e, id, value) {
   const { error } = await db.from('nomeacoes').update({ km_received: value }).eq('id', id);
   if (error) { alert('Erro: ' + error.message); return; }
   renderLista();
+}
+
+async function markNomeacaoPago(e, id, value, source) {
+  e.stopPropagation();
+  const { error } = await db.from('nomeacoes').update({ paid: value }).eq('id', id);
+  if (error) { alert('Erro: ' + error.message); return; }
+  if (source === 'afb') renderAfb(); else renderLista();
 }
 
 async function deleteNomeacao(e, id) {
@@ -3291,7 +3303,7 @@ async function saveRecibo() {
   renderRecibos();
 }
 
-function sumRecibosList(list) {
+function sumFinanceList(list) {
   return {
     total:      list.reduce((s, r) => s + (r.total || 0), 0),
     km_total:   list.reduce((s, r) => s + (r.km_total || 0), 0),
@@ -3300,7 +3312,7 @@ function sumRecibosList(list) {
   };
 }
 
-function renderRecibosStats(data) {
+function renderFinanceStatsBlock(data) {
   const now = new Date();
   const curM = now.getMonth() + 1, curY = now.getFullYear();
   const monthPending = data.filter(r => {
@@ -3309,8 +3321,8 @@ function renderRecibosStats(data) {
   });
   const seasonPaid = data.filter(r => r.paid && getSeason(r.date) === getCurrentSeason());
 
-  const sMonth  = sumRecibosList(monthPending);
-  const sSeason = sumRecibosList(seasonPaid);
+  const sMonth  = sumFinanceList(monthPending);
+  const sSeason = sumFinanceList(seasonPaid);
 
   const breakdown = s => `
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
@@ -3345,7 +3357,7 @@ async function renderRecibos() {
 
   _recibosCache = data;
 
-  el.innerHTML = renderRecibosStats(data) + data.map(r => {
+  el.innerHTML = renderFinanceStatsBlock(data) + data.map(r => {
     const [d, m, y] = (r.date || '').split('/');
     const dayNum   = d || '?';
     const monthStr = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m)-1] || '';
@@ -3443,6 +3455,8 @@ async function renderAfb() {
       <div class="stat-value" style="font-size:18px;">${fmt(afbTotal)}</div>
     </div>`;
 
+  document.getElementById('afb-financeiro').innerHTML = renderFinanceStatsBlock(list);
+
   if (list.length === 0) {
     cont.innerHTML = '<div class="empty-state"><div class="icon">🏟️</div><div>Sem nomeações AFB.</div></div>';
     return;
@@ -3479,6 +3493,7 @@ async function renderAfb() {
               <span class="badge badge-lp" style="font-size:10px;">${n.competition}</span>
               &nbsp;<span style="color:var(--muted);font-size:11px;">${n.venue} · ${n.location}</span>
               ${n.km > 0 ? `&nbsp;<span style="color:var(--muted);font-size:11px;">· ${n.km} km</span>` : ''}
+              &nbsp;<button onclick="markNomeacaoPago(event,${n.id},${!n.paid},'afb')" style="background:${n.paid ? 'rgba(34,197,94,.15)' : 'rgba(100,100,100,.15)'};color:${n.paid ? '#22c55e' : '#8892b0'};border:1px solid ${n.paid ? 'rgba(34,197,94,.3)' : 'rgba(136,146,176,.3)'};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">${n.paid ? '✓ Pago' : '○ Pago'}</button>
             </div>
           </div>
           <div class="amount-col">
