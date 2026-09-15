@@ -1286,9 +1286,184 @@
 <!-- ══════════════════ CLASSIFICAÇÕES ══════════════════ -->
 <div class="view" id="view-ranking">
   <div class="container">
+
+    <div class="period-selector" id="period-selector-class"></div>
+
     <div class="stats-section">
-      <div class="section-title">Classificações</div>
-      <p style="color:var(--text2);font-size:.9rem;">Fórmula e fatores a definir em breve.</p>
+      <div class="section-title">Pontuação Final (Categoria C2)</div>
+      <div id="class-final-card"></div>
+    </div>
+
+    <!-- AD -->
+    <div class="stats-section">
+      <div class="nomeacoes-header">
+        <h2 style="font-size:15px;">Avaliação de Desempenho (AD) — 85%</h2>
+        <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddClassJogo()">+ Adicionar</button>
+      </div>
+      <p style="color:var(--muted);font-size:11px;margin-bottom:10px;">Mínimo regulamentar C2: 6 jogos observados por época.</p>
+      <div id="class-jogos-content"></div>
+    </div>
+
+    <!-- PE -->
+    <div class="stats-section">
+      <div class="nomeacoes-header">
+        <h2 style="font-size:15px;">Prova Escrita (PE) — 6,5%</h2>
+        <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddClassEscrita()">+ Adicionar</button>
+      </div>
+      <p style="color:var(--muted);font-size:11px;margin-bottom:10px;">Apto: nota ≥ 7. Média das provas realizadas na época.</p>
+      <div id="class-escritas-content"></div>
+    </div>
+
+    <!-- PF -->
+    <div class="stats-section">
+      <div class="nomeacoes-header">
+        <h2 style="font-size:15px;">Prova Física (PFisica) — 8,5%</h2>
+        <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddClassFisica()">+ Adicionar</button>
+      </div>
+      <p style="color:var(--muted);font-size:11px;margin-bottom:10px;">Categoria C2 — Velocidade ≤3,35" · Agilidade ≤10,00" · Resistência ≥ nível 16.0-1.</p>
+      <div id="class-fisicas-content"></div>
+    </div>
+
+    <!-- BN / PN -->
+    <div class="stats-section">
+      <div class="section-title">Bonificações (BN) e Penalizações (PN)</div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Trabalhos realizados</label>
+          <input type="number" id="cfg-trabalhos-feitos" class="edit-input" min="0" oninput="saveClassConfigDebounced()">
+        </div>
+        <div class="detail-item">
+          <label>Trabalhos propostos (total)</label>
+          <input type="number" id="cfg-trabalhos-total" class="edit-input" min="0" oninput="saveClassConfigDebounced()">
+        </div>
+        <div class="detail-item" style="grid-column:span 2;">
+          <label>BF (não definido no regulamento — preenche só se a FPF indicar um valor)</label>
+          <input type="number" id="cfg-bf" class="edit-input" step="0.01" min="0" oninput="saveClassConfigDebounced()">
+        </div>
+        <div class="detail-item">
+          <label>PN1 — Jogos de suspensão disciplinar</label>
+          <input type="number" id="cfg-pn1" class="edit-input" min="0" oninput="saveClassConfigDebounced()">
+        </div>
+        <div class="detail-item">
+          <label>PN2 — Dispensas além de 4</label>
+          <input type="number" id="cfg-pn2" class="edit-input" min="0" oninput="saveClassConfigDebounced()">
+        </div>
+        <div class="detail-item">
+          <label>PN3 — Pedidos de dispensa fora de prazo</label>
+          <input type="number" id="cfg-pn3" class="edit-input" min="0" oninput="saveClassConfigDebounced()">
+        </div>
+        <div class="detail-item">
+          <label>PN4 — Art. 26º (reprovação 1ª/2ª chamada)</label>
+          <select id="cfg-pn4" class="edit-input" onchange="saveClassConfigDebounced()">
+            <option value="0">Nenhuma</option>
+            <option value="0.03">0,03 (reprovou 1ª, passou 2ª)</option>
+            <option value="0.06">0,06 (reprovou 2ª, passou 3ª)</option>
+          </select>
+        </div>
+      </div>
+      <div id="cfg-save-status" style="font-size:11px;color:var(--muted);margin-top:10px;"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════ MODAL CLASSIFICAÇÃO — JOGO (AD) ══════════════════ -->
+<div class="modal-overlay" id="class-jogo-overlay" onclick="if(event.target===this)document.getElementById('class-jogo-overlay').classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="class-jogo-modal-title">Nova Avaliação de Jogo</div>
+      <button class="modal-close" onclick="document.getElementById('class-jogo-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <div class="detail-grid">
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Data (DD/MM/AAAA)</label>
+            <input type="text" id="class-jogo-date" class="edit-input" placeholder="ex: 15/03/2026">
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Nota do observador (0-10)</label>
+            <input type="number" id="class-jogo-nota" class="edit-input" step="0.01" min="0" max="10">
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Descrição (opcional)</label>
+            <input type="text" id="class-jogo-desc" class="edit-input" placeholder="ex: Benfica vs Sporting">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveClassJogo()" id="class-jogo-save-btn">💾 Guardar</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('class-jogo-overlay').classList.remove('open')">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ MODAL CLASSIFICAÇÃO — PROVA ESCRITA (PE) ══════════════════ -->
+<div class="modal-overlay" id="class-escrita-overlay" onclick="if(event.target===this)document.getElementById('class-escrita-overlay').classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="class-escrita-modal-title">Nova Prova Escrita</div>
+      <button class="modal-close" onclick="document.getElementById('class-escrita-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <div class="detail-grid">
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Data (DD/MM/AAAA)</label>
+            <input type="text" id="class-escrita-date" class="edit-input" placeholder="ex: 15/03/2026">
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Nota (0-10)</label>
+            <input type="number" id="class-escrita-nota" class="edit-input" step="0.01" min="0" max="10">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveClassEscrita()" id="class-escrita-save-btn">💾 Guardar</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('class-escrita-overlay').classList.remove('open')">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ MODAL CLASSIFICAÇÃO — PROVA FÍSICA (PF) ══════════════════ -->
+<div class="modal-overlay" id="class-fisica-overlay" onclick="if(event.target===this)document.getElementById('class-fisica-overlay').classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="class-fisica-modal-title">Nova Prova Física</div>
+      <button class="modal-close" onclick="document.getElementById('class-fisica-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <div class="detail-grid">
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Data (DD/MM/AAAA)</label>
+            <input type="text" id="class-fisica-date" class="edit-input" placeholder="ex: 15/03/2026">
+          </div>
+          <div class="detail-item">
+            <label>Velocidade (segundos, ex: 3,05)</label>
+            <input type="number" id="class-fisica-vel" class="edit-input" step="0.01" min="0" oninput="updateClassFisicaPreview()">
+          </div>
+          <div class="detail-item">
+            <label>Agilidade (segundos, ex: 9,50)</label>
+            <input type="number" id="class-fisica-agil" class="edit-input" step="0.01" min="0" oninput="updateClassFisicaPreview()">
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Resistência — nível ARIET (ex: 16.0-3)</label>
+            <input type="text" id="class-fisica-resist" class="edit-input" placeholder="ex: 16.0-3" oninput="updateClassFisicaPreview()">
+          </div>
+        </div>
+
+        <div id="class-fisica-preview" style="background:var(--surface2);border-radius:10px;padding:14px;margin-top:14px;">
+          <div id="class-fisica-preview-lines" style="font-size:13px;display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveClassFisica()" id="class-fisica-save-btn">💾 Guardar</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('class-fisica-overlay').classList.remove('open')">Cancelar</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2347,6 +2522,7 @@ function refreshCurrentView() {
   const id = document.querySelector('.view.active')?.id;
   if (id === 'view-lista') { buildPeriodSelector('period-selector-lista'); renderListaContent(); }
   if (id === 'view-stats') { buildPeriodSelector('period-selector-stats'); renderStatsContent(); }
+  if (id === 'view-ranking') { buildPeriodSelector('period-selector-class'); renderClassContent(); }
 }
 
 function buildPeriodSelector(wrapperId) {
@@ -3121,6 +3297,7 @@ function showView(name) {
   if (name === 'lista') renderLista();
   if (name === 'stats') renderStats();
   if (name === 'afb') renderAfb();
+  if (name === 'ranking') renderClass();
 }
 
 let _fpfSub = 'nomeacoes';
@@ -3517,6 +3694,412 @@ async function deleteRecibo(e, id) {
   if (!confirm('Eliminar este recibo?')) return;
   await db.from('outros_recibos').delete().eq('id', id);
   renderRecibos();
+}
+
+// ──────────────────────────────────────────────
+// CLASSIFICAÇÃO (categoria C2)
+// ──────────────────────────────────────────────
+let _classJogosCache = [];
+let _classEscritasCache = [];
+let _classFisicasCache = [];
+let _classConfigCache = { season: null, trabalhos_feitos: 0, trabalhos_total: 0, bf: 0, pn1_jogos: 0, pn2_dispensas: 0, pn3_pedidos: 0, pn4: 0 };
+let _editingClassJogoId = null;
+let _editingClassEscritaId = null;
+let _editingClassFisicaId = null;
+let _classConfigSaveTimer = null;
+
+function parseNivel(str) {
+  if (!str) return null;
+  const parts = String(str).trim().split('-');
+  if (parts.length < 2) return null;
+  const major = parseFloat(parts[0].replace(',', '.'));
+  const minor = parseInt(parts[1]);
+  if (isNaN(major) || isNaN(minor)) return null;
+  return [major, minor];
+}
+
+function compareNivel(a, b) {
+  if (!a || !b) return 0;
+  if (a[0] !== b[0]) return a[0] - b[0];
+  return a[1] - b[1];
+}
+
+function scoreResistC2(str) {
+  const nv = parseNivel(str);
+  if (!nv) return { score: null, apto: false, label: '—' };
+  const cmp = lvl => compareNivel(nv, parseNivel(lvl));
+  if (cmp('17.0-3') >= 0) return { score: 10, apto: true, label: '10' };
+  if (cmp('16.5-1') >= 0 && cmp('17.0-2') <= 0) return { score: 8, apto: true, label: '8' };
+  if (cmp('16.0-1') >= 0 && cmp('16.0-6') <= 0) return { score: 6, apto: true, label: '6' };
+  return { score: 0, apto: false, label: 'Não Apto' };
+}
+
+function scoreVelC2(t) {
+  if (t == null || isNaN(t)) return { score: null, apto: false, label: '—' };
+  if (t <= 3.05) return { score: 10, apto: true, label: '10' };
+  if (t <= 3.20) return { score: 8, apto: true, label: '8' };
+  if (t <= 3.35) return { score: 6, apto: true, label: '6' };
+  return { score: 0, apto: false, label: 'Não Apto' };
+}
+
+function scoreAgilC2(t) {
+  if (t == null || isNaN(t)) return { score: null, apto: false, label: '—' };
+  if (t <= 9.50) return { score: 10, apto: true, label: '10' };
+  if (t <= 9.75) return { score: 8, apto: true, label: '8' };
+  if (t <= 10.00) return { score: 6, apto: true, label: '6' };
+  return { score: 0, apto: false, label: 'Não Apto' };
+}
+
+function computeFisicaResult(r) {
+  const v   = scoreVelC2(parseFloat(r.vel));
+  const a   = scoreAgilC2(parseFloat(r.agil));
+  const res = scoreResistC2(r.resist);
+  const apto = v.apto && a.apto && res.apto;
+  const pfi  = apto ? (v.score + a.score + res.score) / 3 : null;
+  return { v, a, res, apto, pfi };
+}
+
+async function renderClass() {
+  const [jogosRes, escritasRes, fisicasRes] = await Promise.all([
+    db.from('classificacao_jogos').select('*').order('date', { ascending: false }),
+    db.from('classificacao_escritas').select('*').order('date', { ascending: false }),
+    db.from('classificacao_fisicas').select('*').order('date', { ascending: false }),
+  ]);
+  if (!jogosRes.error && jogosRes.data) _classJogosCache = jogosRes.data;
+  if (!escritasRes.error && escritasRes.data) _classEscritasCache = escritasRes.data;
+  if (!fisicasRes.error && fisicasRes.data) _classFisicasCache = fisicasRes.data;
+
+  await loadClassConfig();
+  buildPeriodSelector('period-selector-class');
+  renderClassContent();
+}
+
+function activeClassSeason() {
+  return _periodMode.type === 'epoca' ? _periodMode.value : getCurrentSeason();
+}
+
+async function loadClassConfig() {
+  const season = activeClassSeason();
+  const { data } = await db.from('classificacao_config').select('*').eq('season', season).maybeSingle();
+  _classConfigCache = data || { season, trabalhos_feitos: 0, trabalhos_total: 0, bf: 0, pn1_jogos: 0, pn2_dispensas: 0, pn3_pedidos: 0, pn4: 0 };
+  document.getElementById('cfg-trabalhos-feitos').value = _classConfigCache.trabalhos_feitos || 0;
+  document.getElementById('cfg-trabalhos-total').value  = _classConfigCache.trabalhos_total || 0;
+  document.getElementById('cfg-bf').value  = _classConfigCache.bf || 0;
+  document.getElementById('cfg-pn1').value = _classConfigCache.pn1_jogos || 0;
+  document.getElementById('cfg-pn2').value = _classConfigCache.pn2_dispensas || 0;
+  document.getElementById('cfg-pn3').value = _classConfigCache.pn3_pedidos || 0;
+  document.getElementById('cfg-pn4').value = _classConfigCache.pn4 || 0;
+  document.getElementById('cfg-save-status').textContent = '';
+}
+
+function saveClassConfigDebounced() {
+  clearTimeout(_classConfigSaveTimer);
+  document.getElementById('cfg-save-status').textContent = 'A guardar...';
+  _classConfigSaveTimer = setTimeout(saveClassConfig, 600);
+}
+
+async function saveClassConfig() {
+  const season = activeClassSeason();
+  const row = {
+    season,
+    trabalhos_feitos: parseFloat(document.getElementById('cfg-trabalhos-feitos').value) || 0,
+    trabalhos_total:  parseFloat(document.getElementById('cfg-trabalhos-total').value) || 0,
+    bf:  parseFloat(document.getElementById('cfg-bf').value) || 0,
+    pn1_jogos:     parseFloat(document.getElementById('cfg-pn1').value) || 0,
+    pn2_dispensas: parseFloat(document.getElementById('cfg-pn2').value) || 0,
+    pn3_pedidos:   parseFloat(document.getElementById('cfg-pn3').value) || 0,
+    pn4: parseFloat(document.getElementById('cfg-pn4').value) || 0,
+  };
+  const { error } = await db.from('classificacao_config').upsert(row, { onConflict: 'season' });
+  _classConfigCache = row;
+  document.getElementById('cfg-save-status').textContent = error ? 'Erro ao guardar.' : 'Guardado ✓';
+}
+
+// ── AD (jogos) ──
+function openAddClassJogo() {
+  _editingClassJogoId = null;
+  document.getElementById('class-jogo-date').value = '';
+  document.getElementById('class-jogo-nota').value = '';
+  document.getElementById('class-jogo-desc').value = '';
+  document.getElementById('class-jogo-modal-title').textContent = 'Nova Avaliação de Jogo';
+  document.getElementById('class-jogo-save-btn').textContent = '💾 Guardar';
+  document.getElementById('class-jogo-overlay').classList.add('open');
+}
+
+function openEditClassJogo(e, id) {
+  e.stopPropagation();
+  const r = _classJogosCache.find(x => x.id === id);
+  if (!r) return;
+  _editingClassJogoId = id;
+  document.getElementById('class-jogo-date').value = r.date || '';
+  document.getElementById('class-jogo-nota').value = r.nota ?? '';
+  document.getElementById('class-jogo-desc').value = r.descricao || '';
+  document.getElementById('class-jogo-modal-title').textContent = 'Editar Avaliação de Jogo';
+  document.getElementById('class-jogo-save-btn').textContent = '💾 Guardar alterações';
+  document.getElementById('class-jogo-overlay').classList.add('open');
+}
+
+async function saveClassJogo() {
+  const date = document.getElementById('class-jogo-date').value.trim();
+  const nota = parseFloat(document.getElementById('class-jogo-nota').value);
+  if (!date || isNaN(nota)) { alert('Preenche a data e a nota.'); return; }
+  const row = { date, nota, descricao: document.getElementById('class-jogo-desc').value.trim() };
+  const btn = document.getElementById('class-jogo-save-btn');
+  btn.disabled = true;
+  const { error } = _editingClassJogoId
+    ? await db.from('classificacao_jogos').update(row).eq('id', _editingClassJogoId)
+    : await db.from('classificacao_jogos').insert([row]);
+  btn.disabled = false;
+  if (error) { alert('Erro ao guardar: ' + error.message); return; }
+  _editingClassJogoId = null;
+  document.getElementById('class-jogo-overlay').classList.remove('open');
+  renderClass();
+}
+
+async function deleteClassJogo(e, id) {
+  e.stopPropagation();
+  if (!confirm('Eliminar esta avaliação?')) return;
+  await db.from('classificacao_jogos').delete().eq('id', id);
+  renderClass();
+}
+
+// ── PE (provas escritas) ──
+function openAddClassEscrita() {
+  _editingClassEscritaId = null;
+  document.getElementById('class-escrita-date').value = '';
+  document.getElementById('class-escrita-nota').value = '';
+  document.getElementById('class-escrita-modal-title').textContent = 'Nova Prova Escrita';
+  document.getElementById('class-escrita-save-btn').textContent = '💾 Guardar';
+  document.getElementById('class-escrita-overlay').classList.add('open');
+}
+
+function openEditClassEscrita(e, id) {
+  e.stopPropagation();
+  const r = _classEscritasCache.find(x => x.id === id);
+  if (!r) return;
+  _editingClassEscritaId = id;
+  document.getElementById('class-escrita-date').value = r.date || '';
+  document.getElementById('class-escrita-nota').value = r.nota ?? '';
+  document.getElementById('class-escrita-modal-title').textContent = 'Editar Prova Escrita';
+  document.getElementById('class-escrita-save-btn').textContent = '💾 Guardar alterações';
+  document.getElementById('class-escrita-overlay').classList.add('open');
+}
+
+async function saveClassEscrita() {
+  const date = document.getElementById('class-escrita-date').value.trim();
+  const nota = parseFloat(document.getElementById('class-escrita-nota').value);
+  if (!date || isNaN(nota)) { alert('Preenche a data e a nota.'); return; }
+  const row = { date, nota };
+  const btn = document.getElementById('class-escrita-save-btn');
+  btn.disabled = true;
+  const { error } = _editingClassEscritaId
+    ? await db.from('classificacao_escritas').update(row).eq('id', _editingClassEscritaId)
+    : await db.from('classificacao_escritas').insert([row]);
+  btn.disabled = false;
+  if (error) { alert('Erro ao guardar: ' + error.message); return; }
+  _editingClassEscritaId = null;
+  document.getElementById('class-escrita-overlay').classList.remove('open');
+  renderClass();
+}
+
+async function deleteClassEscrita(e, id) {
+  e.stopPropagation();
+  if (!confirm('Eliminar esta prova?')) return;
+  await db.from('classificacao_escritas').delete().eq('id', id);
+  renderClass();
+}
+
+// ── PFisica (provas físicas) ──
+function openAddClassFisica() {
+  _editingClassFisicaId = null;
+  document.getElementById('class-fisica-date').value = '';
+  document.getElementById('class-fisica-vel').value = '';
+  document.getElementById('class-fisica-agil').value = '';
+  document.getElementById('class-fisica-resist').value = '';
+  document.getElementById('class-fisica-modal-title').textContent = 'Nova Prova Física';
+  document.getElementById('class-fisica-save-btn').textContent = '💾 Guardar';
+  document.getElementById('class-fisica-overlay').classList.add('open');
+  updateClassFisicaPreview();
+}
+
+function openEditClassFisica(e, id) {
+  e.stopPropagation();
+  const r = _classFisicasCache.find(x => x.id === id);
+  if (!r) return;
+  _editingClassFisicaId = id;
+  document.getElementById('class-fisica-date').value = r.date || '';
+  document.getElementById('class-fisica-vel').value = r.vel ?? '';
+  document.getElementById('class-fisica-agil').value = r.agil ?? '';
+  document.getElementById('class-fisica-resist').value = r.resist || '';
+  document.getElementById('class-fisica-modal-title').textContent = 'Editar Prova Física';
+  document.getElementById('class-fisica-save-btn').textContent = '💾 Guardar alterações';
+  document.getElementById('class-fisica-overlay').classList.add('open');
+  updateClassFisicaPreview();
+}
+
+function updateClassFisicaPreview() {
+  const vel    = parseFloat(document.getElementById('class-fisica-vel').value);
+  const agil   = parseFloat(document.getElementById('class-fisica-agil').value);
+  const resist = document.getElementById('class-fisica-resist').value;
+  const r = computeFisicaResult({ vel, agil, resist });
+  const lines = [
+    `<div>Velocidade: ${r.v.label}</div>`,
+    `<div>Agilidade: ${r.a.label}</div>`,
+    `<div>Resistência: ${r.res.label}</div>`,
+    `<div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;font-weight:700;">${r.apto ? `Apto — PFi: ${r.pfi.toFixed(2)}` : 'Não Apto'}</div>`,
+  ];
+  document.getElementById('class-fisica-preview-lines').innerHTML = lines.join('');
+}
+
+async function saveClassFisica() {
+  const date = document.getElementById('class-fisica-date').value.trim();
+  if (!date) { alert('Preenche a data.'); return; }
+  const row = {
+    date,
+    vel: parseFloat(document.getElementById('class-fisica-vel').value) || null,
+    agil: parseFloat(document.getElementById('class-fisica-agil').value) || null,
+    resist: document.getElementById('class-fisica-resist').value.trim(),
+  };
+  const btn = document.getElementById('class-fisica-save-btn');
+  btn.disabled = true;
+  const { error } = _editingClassFisicaId
+    ? await db.from('classificacao_fisicas').update(row).eq('id', _editingClassFisicaId)
+    : await db.from('classificacao_fisicas').insert([row]);
+  btn.disabled = false;
+  if (error) { alert('Erro ao guardar: ' + error.message); return; }
+  _editingClassFisicaId = null;
+  document.getElementById('class-fisica-overlay').classList.remove('open');
+  renderClass();
+}
+
+async function deleteClassFisica(e, id) {
+  e.stopPropagation();
+  if (!confirm('Eliminar esta prova física?')) return;
+  await db.from('classificacao_fisicas').delete().eq('id', id);
+  renderClass();
+}
+
+// ── Render geral ──
+function renderClassContent() {
+  const jogos    = filterByPeriod(_classJogosCache);
+  const escritas = filterByPeriod(_classEscritasCache);
+  const fisicas  = filterByPeriod(_classFisicasCache);
+
+  // AD
+  const AD = jogos.length ? jogos.reduce((s, r) => s + (r.nota || 0), 0) / jogos.length : 0;
+
+  // PE
+  const PE = escritas.length ? escritas.reduce((s, r) => s + (r.nota || 0), 0) / escritas.length : 0;
+
+  // PFisica — só entram as sessões Apto
+  const fisicasResults = fisicas.map(r => ({ r, res: computeFisicaResult(r) }));
+  const aptos = fisicasResults.filter(x => x.res.apto);
+  const PFisica = aptos.length ? aptos.reduce((s, x) => s + x.res.pfi, 0) / aptos.length : 0;
+
+  // BN / PN
+  const cfg = _classConfigCache;
+  const pct = cfg.trabalhos_total > 0 ? cfg.trabalhos_feitos / cfg.trabalhos_total : 0;
+  const BT = pct >= 0.90 ? 0.20 : (pct >= 0.75 ? 0.10 : 0.00);
+  const BF = cfg.bf || 0;
+  const BN = BT + BF;
+
+  const PN1 = (cfg.pn1_jogos || 0) * 0.01;
+  const PN2 = (cfg.pn2_dispensas || 0) * 0.04;
+  const PN3 = (cfg.pn3_pedidos || 0) * 0.08;
+  const PN4 = cfg.pn4 || 0;
+  const PN = PN1 + PN2 + PN3 + PN4;
+
+  const PF = AD * 0.850 + PE * 0.065 + PFisica * 0.085 - PN + BN;
+
+  document.getElementById('class-final-card').innerHTML = `
+    <div class="stats-grid">
+      <div class="big-stat">
+        <div class="label">Pontuação Final</div>
+        <div class="value">${PF.toFixed(4)}</div>
+        <div class="sub">época ${activeClassSeason()}</div>
+      </div>
+      <div class="big-stat">
+        <div class="label">AD</div>
+        <div class="value" style="font-size:20px;">${AD.toFixed(2)}</div>
+        <div class="sub">${jogos.length} jogo${jogos.length !== 1 ? 's' : ''} · × 0,850 = ${(AD*0.850).toFixed(4)}</div>
+      </div>
+      <div class="big-stat">
+        <div class="label">PE</div>
+        <div class="value" style="font-size:20px;">${PE.toFixed(2)}</div>
+        <div class="sub">${escritas.length} prova${escritas.length !== 1 ? 's' : ''} · × 0,065 = ${(PE*0.065).toFixed(4)}</div>
+      </div>
+      <div class="big-stat">
+        <div class="label">PFisica</div>
+        <div class="value" style="font-size:20px;">${PFisica.toFixed(2)}</div>
+        <div class="sub">${aptos.length}/${fisicas.length} apto · × 0,085 = ${(PFisica*0.085).toFixed(4)}</div>
+      </div>
+      <div class="big-stat">
+        <div class="label">BN</div>
+        <div class="value" style="font-size:20px;color:#22c55e;">+${BN.toFixed(2)}</div>
+        <div class="sub">BT ${BT.toFixed(2)} + BF ${BF.toFixed(2)}</div>
+      </div>
+      <div class="big-stat">
+        <div class="label">PN</div>
+        <div class="value" style="font-size:20px;color:var(--red);">-${PN.toFixed(2)}</div>
+        <div class="sub">PN1 ${PN1.toFixed(2)} + PN2 ${PN2.toFixed(2)} + PN3 ${PN3.toFixed(2)} + PN4 ${PN4.toFixed(2)}</div>
+      </div>
+    </div>`;
+
+  // Lista AD
+  const contJogos = document.getElementById('class-jogos-content');
+  contJogos.innerHTML = jogos.length === 0
+    ? '<div class="empty-state"><div class="icon">📋</div><div>Sem avaliações registadas.</div></div>'
+    : jogos.map(r => `
+      <div class="nomeacao-item" onclick="openEditClassJogo(event,${r.id})">
+        <div class="date-col">
+          <div class="day">${(r.date||'').split('/')[0]||''}</div>
+          <div class="month">${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt((r.date||'').split('/')[1])-1]||''}</div>
+        </div>
+        <div class="info-col">
+          <div class="teams-row">${r.descricao || 'Jogo observado'}</div>
+        </div>
+        <div class="amount-col"><div class="total">${(r.nota||0).toFixed(2)}</div></div>
+        <button class="del-btn" onclick="openEditClassJogo(event,${r.id})" title="Editar">✎</button>
+        <button class="del-btn" onclick="deleteClassJogo(event,${r.id})">✕</button>
+      </div>`).join('');
+
+  // Lista PE
+  const contEscritas = document.getElementById('class-escritas-content');
+  contEscritas.innerHTML = escritas.length === 0
+    ? '<div class="empty-state"><div class="icon">📝</div><div>Sem provas escritas registadas.</div></div>'
+    : escritas.map(r => `
+      <div class="nomeacao-item" onclick="openEditClassEscrita(event,${r.id})">
+        <div class="date-col">
+          <div class="day">${(r.date||'').split('/')[0]||''}</div>
+          <div class="month">${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt((r.date||'').split('/')[1])-1]||''}</div>
+        </div>
+        <div class="info-col">
+          <div class="teams-row">Prova Escrita</div>
+          <div class="meta-row">${(r.nota||0) >= 7 ? '<span class="done-badge">Apto</span>' : '<span class="pending-badge">Não Apto</span>'}</div>
+        </div>
+        <div class="amount-col"><div class="total">${(r.nota||0).toFixed(2)}</div></div>
+        <button class="del-btn" onclick="openEditClassEscrita(event,${r.id})" title="Editar">✎</button>
+        <button class="del-btn" onclick="deleteClassEscrita(event,${r.id})">✕</button>
+      </div>`).join('');
+
+  // Lista PF
+  const contFisicas = document.getElementById('class-fisicas-content');
+  contFisicas.innerHTML = fisicas.length === 0
+    ? '<div class="empty-state"><div class="icon">🏃</div><div>Sem provas físicas registadas.</div></div>'
+    : fisicasResults.map(({ r, res }) => `
+      <div class="nomeacao-item" onclick="openEditClassFisica(event,${r.id})">
+        <div class="date-col">
+          <div class="day">${(r.date||'').split('/')[0]||''}</div>
+          <div class="month">${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt((r.date||'').split('/')[1])-1]||''}</div>
+        </div>
+        <div class="info-col">
+          <div class="teams-row">Vel ${r.vel ?? '?'}" · Agil ${r.agil ?? '?'}" · Resist ${r.resist || '?'}</div>
+          <div class="meta-row">${res.apto ? '<span class="done-badge">Apto</span>' : '<span class="pending-badge">Não Apto</span>'}</div>
+        </div>
+        <div class="amount-col"><div class="total">${res.apto ? res.pfi.toFixed(2) : '—'}</div></div>
+        <button class="del-btn" onclick="openEditClassFisica(event,${r.id})" title="Editar">✎</button>
+        <button class="del-btn" onclick="deleteClassFisica(event,${r.id})">✕</button>
+      </div>`).join('');
 }
 
 // ──────────────────────────────────────────────
