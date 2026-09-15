@@ -224,7 +224,7 @@
       text-transform: uppercase;
     }
 
-    .badge-lp   { background: #1d3461; color: #7bb3ff; }
+    .badge-lp   { background: #3a1d1d; color: #ff8f8f; }
     .badge-role { background: #1a2e1a; color: var(--green); }
 
     .card-body { padding: 20px; }
@@ -1450,7 +1450,7 @@
         <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Valores em € por função. Altera e guarda para atualizar os cálculos futuros.</p>
 
         <!-- FPF -->
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#4f7fff;margin-bottom:8px;">FPF</div>
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#ef4444;margin-bottom:8px;">FPF</div>
         <div style="overflow-x:auto;margin-bottom:20px;">
           <table id="fees-table-fpf" style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead>
@@ -1468,7 +1468,7 @@
         </div>
 
         <!-- AFB -->
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#f59e0b;margin-bottom:8px;">AFB</div>
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#4f7fff;margin-bottom:8px;">AFB</div>
         <div style="overflow-x:auto;margin-bottom:20px;">
           <table id="fees-table-afb" style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead>
@@ -2953,8 +2953,8 @@ function renderStatsContent() {
     </div>`;
 
   document.getElementById('s-breakdown').innerHTML =
-    renderFinanceSection('s-fpf-detail', 'FPF', '#4f7fff', sumsFpf) +
-    renderFinanceSection('s-afb-detail', 'AFB', '#f59e0b', sumsAfb);
+    renderFinanceSection('s-fpf-detail', 'FPF', '#ef4444', sumsFpf) +
+    renderFinanceSection('s-afb-detail', 'AFB', '#4f7fff', sumsAfb);
 
   // ── Recibos (Outros Recibos FPF + CAT) ──
   const recibosFpf = filterByPeriod(_allRecibosCache);
@@ -3013,8 +3013,8 @@ function renderStatsContent() {
   };
 
   document.getElementById('s-recibos-breakdown').innerHTML =
-    recibosBar('Outros Recibos FPF', '#4f7fff', sRecibosFpf) +
-    recibosBar('CAT Futsal', '#f59e0b', sRecibosCat);
+    recibosBar('Outros Recibos FPF', '#ef4444', sRecibosFpf) +
+    recibosBar('CAT Futsal', '#4f7fff', sRecibosCat);
 
   // ── Jogos por mês (FPF vs AFB) ──
   const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -3031,8 +3031,8 @@ function renderStatsContent() {
     data: {
       labels: monthLabels,
       datasets: [
-        { label: 'FPF', data: allMonths.map(k => monthMapFpf[k]||0), backgroundColor: 'rgba(79,127,255,.8)', borderRadius: 4, borderSkipped: false },
-        { label: 'AFB', data: allMonths.map(k => monthMapAfb[k]||0), backgroundColor: 'rgba(245,158,11,.8)', borderRadius: 4, borderSkipped: false }
+        { label: 'FPF', data: allMonths.map(k => monthMapFpf[k]||0), backgroundColor: 'rgba(239,68,68,.8)', borderRadius: 4, borderSkipped: false },
+        { label: 'AFB', data: allMonths.map(k => monthMapAfb[k]||0), backgroundColor: 'rgba(79,127,255,.8)', borderRadius: 4, borderSkipped: false }
       ]
     },
     options: {
@@ -3054,7 +3054,7 @@ function renderStatsContent() {
   const sortedComps = Object.entries(compMap).sort((a,b) => b[1].count - a[1].count);
   document.getElementById('s-comp-list').innerHTML = sortedComps.map(([comp, d]) => `
     <div class="comp-row">
-      <span class="badge badge-lp" style="${d.source==='afb'?'background:rgba(245,158,11,.15);color:#f59e0b;border-color:rgba(245,158,11,.3);':''}">${comp}</span>
+      <span class="badge badge-lp" style="${d.source==='afb'?'background:rgba(79,127,255,.15);color:#4f7fff;border-color:rgba(79,127,255,.3);':''}">${comp}</span>
       <span class="comp-name" style="font-size:10px;color:var(--muted);">${d.source.toUpperCase()}</span>
       <span class="comp-count">${d.count} jogo${d.count !== 1 ? 's' : ''}</span>
       <span class="comp-total">${fmt(d.total)}</span>
@@ -3594,7 +3594,7 @@ async function renderAfb() {
           <div class="info-col">
             <div class="teams-row">${n.home_team} <span style="color:var(--muted);font-weight:400">vs</span> ${n.away_team}</div>
             <div class="meta-row">
-              <span class="badge badge-lp" style="font-size:10px;">${n.competition}</span>
+              <span class="badge badge-lp" style="font-size:10px;background:rgba(79,127,255,.15);color:#4f7fff;">${n.competition}</span>
               &nbsp;<span style="color:var(--muted);font-size:11px;">${n.venue} · ${n.location}</span>
               ${n.km > 0 ? `&nbsp;<span style="color:var(--muted);font-size:11px;">· ${n.km} km</span>` : ''}
               &nbsp;<button onclick="markNomeacaoPago(event,${n.id},${!n.paid},'afb')" style="background:${n.paid ? 'rgba(34,197,94,.15)' : 'rgba(100,100,100,.15)'};color:${n.paid ? '#22c55e' : '#8892b0'};border:1px solid ${n.paid ? 'rgba(34,197,94,.3)' : 'rgba(136,146,176,.3)'};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">${n.paid ? '✓ Pago' : '○ Pago'}</button>
