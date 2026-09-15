@@ -1233,51 +1233,67 @@
 
     <div class="period-selector" id="period-selector-stats"></div>
 
-    <div class="stats-section">
-      <div class="section-title">Resumo Financeiro</div>
-      <div class="stats-grid" id="s-finance-cards"></div>
-      <div id="s-breakdown"></div>
+    <!-- Sub-tabs -->
+    <div style="display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:2px;margin-bottom:18px;">
+      <button id="stats-sub-financeiro" class="period-mode-btn active" onclick="showStatsSub('financeiro')">💰 Financeiro</button>
+      <button id="stats-sub-jogos"       class="period-mode-btn"       onclick="showStatsSub('jogos')">🏐 Jogos</button>
     </div>
 
-    <div class="stats-section">
-      <div class="section-title">Atividade</div>
-      <div class="chart-box" style="margin-bottom:16px;">
-        <canvas id="s-chart-months" height="100"></canvas>
+    <!-- ── Sub: Financeiro ── -->
+    <div id="stats-pane-financeiro">
+
+      <div class="stats-section">
+        <div class="section-title">Resumo Financeiro</div>
+        <div class="stats-grid" id="s-finance-cards"></div>
+        <div id="s-breakdown"></div>
       </div>
-      <div class="comp-list" id="s-comp-list"></div>
-    </div>
 
-    <div class="stats-section">
-      <div class="section-title">Deslocações</div>
-      <div class="two-col" style="margin-bottom:16px;">
-        <div class="chart-box" style="text-align:center;">
-          <div class="label" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;">Total de Kms</div>
-          <div id="s-total-km" style="font-size:36px;font-weight:700;font-family:Consolas,monospace;color:var(--accent);"></div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px;">km percorridos</div>
+      <div class="stats-section">
+        <div class="section-title">Deslocações</div>
+        <div class="two-col" style="margin-bottom:16px;">
+          <div class="chart-box" style="text-align:center;">
+            <div class="label" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;">Total de Kms</div>
+            <div id="s-total-km" style="font-size:36px;font-weight:700;font-family:Consolas,monospace;color:var(--accent);"></div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px;">km percorridos</div>
+          </div>
+          <div class="chart-box" style="text-align:center;">
+            <div class="label" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;">Média por Jogo</div>
+            <div id="s-avg-km" style="font-size:36px;font-weight:700;font-family:Consolas,monospace;color:var(--accent);"></div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px;">km em média</div>
+          </div>
         </div>
-        <div class="chart-box" style="text-align:center;">
-          <div class="label" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;">Média por Jogo</div>
-          <div id="s-avg-km" style="font-size:36px;font-weight:700;font-family:Consolas,monospace;color:var(--accent);"></div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px;">km em média</div>
-        </div>
+        <div class="location-list" id="s-locations"></div>
       </div>
-      <div class="location-list" id="s-locations"></div>
+
+      <div class="stats-section">
+        <div class="section-title">Recibos</div>
+        <div class="stats-grid" id="s-recibos-cards"></div>
+        <div id="s-recibos-breakdown"></div>
+      </div>
+
     </div>
 
-    <div class="stats-section">
-      <div class="section-title">Jogos por Função</div>
-      <div class="comp-list" id="s-roles"></div>
-    </div>
+    <!-- ── Sub: Jogos ── -->
+    <div id="stats-pane-jogos" style="display:none;">
 
-    <div class="stats-section">
-      <div class="section-title">Colegas de Equipa</div>
-      <div class="colleague-list" id="s-colleagues"></div>
-    </div>
+      <div class="stats-section">
+        <div class="section-title">Atividade</div>
+        <div class="chart-box" style="margin-bottom:16px;">
+          <canvas id="s-chart-months" height="100"></canvas>
+        </div>
+        <div class="comp-list" id="s-comp-list"></div>
+      </div>
 
-    <div class="stats-section">
-      <div class="section-title">Recibos</div>
-      <div class="stats-grid" id="s-recibos-cards"></div>
-      <div id="s-recibos-breakdown"></div>
+      <div class="stats-section">
+        <div class="section-title">Jogos por Função</div>
+        <div class="comp-list" id="s-roles"></div>
+      </div>
+
+      <div class="stats-section">
+        <div class="section-title">Colegas de Equipa</div>
+        <div class="colleague-list" id="s-colleagues"></div>
+      </div>
+
     </div>
 
   </div>
@@ -3091,6 +3107,16 @@ async function deleteNomeacao(e, id) {
 // ESTATÍSTICAS
 // ──────────────────────────────────────────────
 let _monthChart = null;
+let _statsSub = 'financeiro';
+
+function showStatsSub(sub) {
+  _statsSub = sub;
+  document.getElementById('stats-pane-financeiro').style.display = sub === 'financeiro' ? '' : 'none';
+  document.getElementById('stats-pane-jogos').style.display      = sub === 'jogos'      ? '' : 'none';
+  document.getElementById('stats-sub-financeiro').className = 'period-mode-btn' + (sub === 'financeiro' ? ' active' : '');
+  document.getElementById('stats-sub-jogos').className       = 'period-mode-btn' + (sub === 'jogos'      ? ' active' : '');
+  if (sub === 'jogos') renderStatsContent();
+}
 
 async function renderStats() {
   // Para estatísticas precisamos de todos os jogos (FPF + AFB) e recibos (FPF + CAT)
