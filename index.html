@@ -1359,6 +1359,10 @@
             <input type="number" id="class-jogo-nota" class="edit-input" step="0.01" min="0" max="10">
           </div>
           <div class="detail-item" style="grid-column:span 2;">
+            <label>Observador</label>
+            <input type="text" id="class-jogo-observador" class="edit-input" placeholder="ex: Nome do observador">
+          </div>
+          <div class="detail-item" style="grid-column:span 2;">
             <label>Descrição (opcional)</label>
             <input type="text" id="class-jogo-desc" class="edit-input" placeholder="ex: Benfica vs Sporting">
           </div>
@@ -2495,22 +2499,30 @@ function refreshCurrentView() {
   const id = document.querySelector('.view.active')?.id;
   if (id === 'view-lista') { buildPeriodSelector('period-selector-lista'); renderListaContent(); }
   if (id === 'view-stats') { buildPeriodSelector('period-selector-stats'); renderStatsContent(); }
-  if (id === 'view-ranking') { buildPeriodSelector('period-selector-class'); renderClassContent(); }
+  if (id === 'view-ranking') { forceEpocaMode(); buildPeriodSelector('period-selector-class', true); renderClassContent(); }
 }
 
-function buildPeriodSelector(wrapperId) {
+function buildPeriodSelector(wrapperId, hideModeToggle) {
   const wrap = document.getElementById(wrapperId);
   if (!wrap) return;
   const avail = _periodMode.type === 'epoca' ? getAvailableSeasons() : getAvailableYears();
   const chips = avail.map(v =>
     `<button class="period-chip${v === _periodMode.value ? ' active' : ''}" onclick="setPeriodValue('${v}')">${v}</button>`
   ).join('');
-  wrap.innerHTML = `
+  wrap.innerHTML = (hideModeToggle ? '' : `
     <div class="period-mode-toggle">
       <button class="period-mode-btn${_periodMode.type === 'epoca' ? ' active' : ''}" onclick="setPeriodMode('epoca')">Época</button>
       <button class="period-mode-btn${_periodMode.type === 'ano' ? ' active' : ''}" onclick="setPeriodMode('ano')">Ano Civil</button>
-    </div>
-    <div class="period-chips">${chips}</div>`;
+    </div>`) +
+    `<div class="period-chips">${chips}</div>`;
+}
+
+function forceEpocaMode() {
+  if (_periodMode.type === 'epoca') return;
+  _periodMode.type = 'epoca';
+  const avail = getAvailableSeasons();
+  const cur = getCurrentSeason();
+  _periodMode.value = avail.includes(cur) ? cur : (avail[avail.length - 1] || cur);
 }
 
 // ──────────────────────────────────────────────
@@ -3742,8 +3754,9 @@ async function renderClass() {
   if (!escritasRes.error && escritasRes.data) _classEscritasCache = escritasRes.data;
   if (!fisicasRes.error && fisicasRes.data) _classFisicasCache = fisicasRes.data;
 
+  forceEpocaMode();
   await loadClassConfig();
-  buildPeriodSelector('period-selector-class');
+  buildPeriodSelector('period-selector-class', true);
   renderClassContent();
 }
 
@@ -3781,6 +3794,7 @@ function openAddClassJogo() {
   _editingClassJogoId = null;
   document.getElementById('class-jogo-date').value = '';
   document.getElementById('class-jogo-nota').value = '';
+  document.getElementById('class-jogo-observador').value = '';
   document.getElementById('class-jogo-desc').value = '';
   document.getElementById('class-jogo-modal-title').textContent = 'Nova Avaliação de Jogo';
   document.getElementById('class-jogo-save-btn').textContent = '💾 Guardar';
@@ -3794,6 +3808,7 @@ function openEditClassJogo(e, id) {
   _editingClassJogoId = id;
   document.getElementById('class-jogo-date').value = r.date || '';
   document.getElementById('class-jogo-nota').value = r.nota ?? '';
+  document.getElementById('class-jogo-observador').value = r.observador || '';
   document.getElementById('class-jogo-desc').value = r.descricao || '';
   document.getElementById('class-jogo-modal-title').textContent = 'Editar Avaliação de Jogo';
   document.getElementById('class-jogo-save-btn').textContent = '💾 Guardar alterações';
@@ -3804,7 +3819,12 @@ async function saveClassJogo() {
   const date = document.getElementById('class-jogo-date').value.trim();
   const nota = parseFloat(document.getElementById('class-jogo-nota').value);
   if (!date || isNaN(nota)) { alert('Preenche a data e a nota.'); return; }
-  const row = { date, nota, descricao: document.getElementById('class-jogo-desc').value.trim() };
+  const row = {
+    date,
+    nota,
+    observador: document.getElementById('class-jogo-observador').value.trim(),
+    descricao: document.getElementById('class-jogo-desc').value.trim(),
+  };
   const btn = document.getElementById('class-jogo-save-btn');
   btn.disabled = true;
   const { error } = _editingClassJogoId
@@ -4006,6 +4026,7 @@ function renderClassContent() {
         </div>
         <div class="info-col">
           <div class="teams-row">${r.descricao || 'Jogo observado'}</div>
+          ${r.observador ? `<div class="meta-row">👤 ${r.observador}</div>` : ''}
         </div>
         <div class="amount-col"><div class="total">${(r.nota||0).toFixed(2)}</div></div>
         <button class="del-btn" onclick="openEditClassJogo(event,${r.id})" title="Editar">✎</button>
