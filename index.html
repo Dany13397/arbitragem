@@ -1403,6 +1403,10 @@
             <label>Km (ida e volta)</label>
             <input type="number" id="cat-km" class="edit-input" placeholder="0" min="0" oninput="updateCatPreview()">
           </div>
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Descrição</label>
+            <input type="text" id="cat-desc" class="edit-input" placeholder="ex: Turma A - 2º ano">
+          </div>
         </div>
 
         <!-- Resumo do valor -->
@@ -3087,6 +3091,7 @@ function openAddCat() {
   ).join('');
   document.getElementById('cat-date').value = '';
   document.getElementById('cat-km').value = '';
+  document.getElementById('cat-desc').value = '';
   document.getElementById('cat-km-row').style.display = 'none';
   document.getElementById('cat-preview').style.display = 'none';
   document.getElementById('cat-overlay').classList.add('open');
@@ -3131,6 +3136,7 @@ async function saveCat() {
   const kmTotal  = km > 0 ? km * 2 * KM_RATE : 0;
   const mealTotal = act.meal ? MEAL : 0;
   const total    = act.value + kmTotal + mealTotal;
+  const description = document.getElementById('cat-desc').value.trim();
 
   const row = {
     activity: act.label,
@@ -3140,6 +3146,7 @@ async function saveCat() {
     km_total: kmTotal,
     meal_total: mealTotal,
     total,
+    description,
   };
 
   document.getElementById('cat-save-btn').disabled = true;
@@ -3185,6 +3192,7 @@ async function renderCat() {
       </div>
       <div class="info-col">
         <div class="teams-row">${r.activity}</div>
+        ${r.description ? `<div class="meta-row" style="color:var(--muted);font-size:11px;">${r.description}</div>` : ''}
         <div class="meta-row">
           ${r.km > 0 ? `<span style="color:var(--muted);font-size:11px;">${r.km} km</span>` : ''}
           ${r.meal_total > 0 ? `<span style="color:var(--muted);font-size:11px;"> · Refeição ${fmt(r.meal_total)}</span>` : ''}
