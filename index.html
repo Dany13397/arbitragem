@@ -1287,7 +1287,16 @@
 <div class="view" id="view-ranking">
   <div class="container">
 
+    <!-- Sub-tabs -->
+    <div style="display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:2px;margin-bottom:18px;">
+      <button id="class-sub-minha"    class="period-mode-btn active" onclick="showClassSub('minha')">A Minha Classificação</button>
+      <button id="class-sub-ranking"  class="period-mode-btn"        onclick="showClassSub('ranking')">Ranking</button>
+    </div>
+
     <div class="period-selector" id="period-selector-class"></div>
+
+    <!-- ── Sub: A Minha Classificação ── -->
+    <div id="class-pane-minha">
 
     <div class="stats-section">
       <div class="section-title">Pontuação Final (Categoria C2)</div>
@@ -1337,6 +1346,93 @@
       <div id="cfg-save-status" style="font-size:11px;color:var(--muted);margin-top:10px;"></div>
     </div>
 
+    </div>
+    <!-- fim class-pane-minha -->
+
+    <!-- ── Sub: Ranking ── -->
+    <div id="class-pane-ranking" style="display:none;">
+
+      <div class="stats-section">
+        <div class="nomeacoes-header">
+          <h2 style="font-size:15px;">Ranking (Categoria C2)</h2>
+          <button class="btn btn-primary" style="padding:8px 14px;font-size:13px;" onclick="openAddColega()">+ Adicionar Colega</button>
+        </div>
+        <p style="color:var(--muted);font-size:11px;margin-bottom:10px;">Usa o snapshot mais recente de cada colega, dentro da época selecionada. BT considerada sempre no valor máximo para todos.</p>
+        <div id="class-ranking-table"></div>
+      </div>
+
+      <div class="stats-section">
+        <div class="section-title">Colegas</div>
+        <div id="class-colegas-content"></div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════ MODAL CLASSIFICAÇÃO — COLEGA ══════════════════ -->
+<div class="modal-overlay" id="colega-overlay" onclick="if(event.target===this)document.getElementById('colega-overlay').classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Novo Colega</div>
+      <button class="modal-close" onclick="document.getElementById('colega-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <div class="detail-grid">
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Nome</label>
+            <input type="text" id="colega-nome" class="edit-input" placeholder="ex: João Silva">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveColega()" id="colega-save-btn">💾 Guardar</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('colega-overlay').classList.remove('open')">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ MODAL CLASSIFICAÇÃO — SNAPSHOT DE COLEGA ══════════════════ -->
+<div class="modal-overlay" id="colega-snap-overlay" onclick="if(event.target===this)document.getElementById('colega-snap-overlay').classList.remove('open')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="colega-snap-modal-title">Nova Atualização</div>
+      <button class="modal-close" onclick="document.getElementById('colega-snap-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <div class="detail-grid">
+          <div class="detail-item" style="grid-column:span 2;">
+            <label>Data (DD/MM/AAAA)</label>
+            <input type="text" id="colega-snap-date" class="edit-input" placeholder="ex: 15/03/2026">
+          </div>
+          <div class="detail-item">
+            <label>AD</label>
+            <input type="number" id="colega-snap-ad" class="edit-input" step="0.01" min="0" max="10" oninput="updateColegaSnapPreview()">
+          </div>
+          <div class="detail-item">
+            <label>PE</label>
+            <input type="number" id="colega-snap-pe" class="edit-input" step="0.01" min="0" max="10" oninput="updateColegaSnapPreview()">
+          </div>
+          <div class="detail-item">
+            <label>PFisica</label>
+            <input type="number" id="colega-snap-pfisica" class="edit-input" step="0.01" min="0" max="10" oninput="updateColegaSnapPreview()">
+          </div>
+          <div class="detail-item">
+            <label>BF (opcional)</label>
+            <input type="number" id="colega-snap-bf" class="edit-input" step="0.01" min="0" oninput="updateColegaSnapPreview()">
+          </div>
+        </div>
+        <div id="colega-snap-preview" style="background:var(--surface2);border-radius:10px;padding:14px;margin-top:14px;"></div>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveColegaSnap()" id="colega-snap-save-btn">💾 Guardar</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('colega-snap-overlay').classList.remove('open')">Cancelar</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2499,7 +2595,7 @@ function refreshCurrentView() {
   const id = document.querySelector('.view.active')?.id;
   if (id === 'view-lista') { buildPeriodSelector('period-selector-lista'); renderListaContent(); }
   if (id === 'view-stats') { buildPeriodSelector('period-selector-stats'); renderStatsContent(); }
-  if (id === 'view-ranking') { forceEpocaMode(); buildPeriodSelector('period-selector-class', true); renderClassContent(); }
+  if (id === 'view-ranking') { forceEpocaMode(); buildPeriodSelector('period-selector-class', true); renderClassContent(); if (_classSub === 'ranking') renderRankingContent(); }
 }
 
 function buildPeriodSelector(wrapperId, hideModeToggle) {
@@ -3692,6 +3788,11 @@ let _editingClassJogoId = null;
 let _editingClassEscritaId = null;
 let _editingClassFisicaId = null;
 let _classConfigSaveTimer = null;
+let _colegasCache = [];
+let _colegaSnapsCache = [];
+let _editingColegaId = null;
+let _editingColegaSnapId = null;
+let _currentColegaIdForSnap = null;
 
 function parseNivel(str) {
   if (!str) return null;
@@ -3744,20 +3845,40 @@ function computeFisicaResult(r) {
   return { v, a, res, apto, pfi };
 }
 
+function computePF(AD, PE, PFisica, BF) {
+  const BN = 0.20 + (BF || 0);
+  return (AD || 0) * 0.850 + (PE || 0) * 0.065 + (PFisica || 0) * 0.085 + BN;
+}
+
+let _classSub = 'minha';
+function showClassSub(sub) {
+  _classSub = sub;
+  document.getElementById('class-pane-minha').style.display   = sub === 'minha'   ? '' : 'none';
+  document.getElementById('class-pane-ranking').style.display = sub === 'ranking' ? '' : 'none';
+  document.getElementById('class-sub-minha').className   = 'period-mode-btn' + (sub === 'minha'   ? ' active' : '');
+  document.getElementById('class-sub-ranking').className = 'period-mode-btn' + (sub === 'ranking' ? ' active' : '');
+  if (sub === 'ranking') renderRankingContent();
+}
+
 async function renderClass() {
-  const [jogosRes, escritasRes, fisicasRes] = await Promise.all([
+  const [jogosRes, escritasRes, fisicasRes, colegasRes, snapsRes] = await Promise.all([
     db.from('classificacao_jogos').select('*').order('date', { ascending: false }),
     db.from('classificacao_escritas').select('*').order('date', { ascending: false }),
     db.from('classificacao_fisicas').select('*').order('date', { ascending: false }),
+    db.from('classificacao_colegas').select('*').order('nome', { ascending: true }),
+    db.from('classificacao_colega_snapshots').select('*').order('date', { ascending: false }),
   ]);
   if (!jogosRes.error && jogosRes.data) _classJogosCache = jogosRes.data;
   if (!escritasRes.error && escritasRes.data) _classEscritasCache = escritasRes.data;
   if (!fisicasRes.error && fisicasRes.data) _classFisicasCache = fisicasRes.data;
+  if (!colegasRes.error && colegasRes.data) _colegasCache = colegasRes.data;
+  if (!snapsRes.error && snapsRes.data) _colegaSnapsCache = snapsRes.data;
 
   forceEpocaMode();
   await loadClassConfig();
   buildPeriodSelector('period-selector-class', true);
   renderClassContent();
+  if (_classSub === 'ranking') renderRankingContent();
 }
 
 function activeClassSeason() {
@@ -4070,6 +4191,196 @@ function renderClassContent() {
         <button class="del-btn" onclick="openEditClassFisica(event,${r.id})" title="Editar">✎</button>
         <button class="del-btn" onclick="deleteClassFisica(event,${r.id})">✕</button>
       </div>`).join('');
+}
+
+// ── Colegas (Ranking) ──
+function openAddColega() {
+  _editingColegaId = null;
+  document.getElementById('colega-nome').value = '';
+  document.getElementById('colega-overlay').classList.add('open');
+}
+
+function openEditColegaNome(e, id) {
+  e.stopPropagation();
+  const c = _colegasCache.find(x => x.id === id);
+  if (!c) return;
+  _editingColegaId = id;
+  document.getElementById('colega-nome').value = c.nome || '';
+  document.getElementById('colega-overlay').classList.add('open');
+}
+
+async function saveColega() {
+  const nome = document.getElementById('colega-nome').value.trim();
+  if (!nome) { alert('Preenche o nome.'); return; }
+  const btn = document.getElementById('colega-save-btn');
+  btn.disabled = true;
+  const { error } = _editingColegaId
+    ? await db.from('classificacao_colegas').update({ nome }).eq('id', _editingColegaId)
+    : await db.from('classificacao_colegas').insert([{ nome }]);
+  btn.disabled = false;
+  if (error) { alert('Erro ao guardar: ' + error.message); return; }
+  _editingColegaId = null;
+  document.getElementById('colega-overlay').classList.remove('open');
+  renderClass();
+}
+
+async function deleteColega(e, id) {
+  e.stopPropagation();
+  if (!confirm('Eliminar este colega e todo o seu histórico?')) return;
+  await db.from('classificacao_colegas').delete().eq('id', id);
+  renderClass();
+}
+
+// ── Snapshots de colega ──
+function openAddColegaSnap(e, colegaId) {
+  if (e) e.stopPropagation();
+  _editingColegaSnapId = null;
+  _currentColegaIdForSnap = colegaId;
+  document.getElementById('colega-snap-date').value = '';
+  document.getElementById('colega-snap-ad').value = '';
+  document.getElementById('colega-snap-pe').value = '';
+  document.getElementById('colega-snap-pfisica').value = '';
+  document.getElementById('colega-snap-bf').value = '';
+  document.getElementById('colega-snap-modal-title').textContent = 'Nova Atualização';
+  document.getElementById('colega-snap-save-btn').textContent = '💾 Guardar';
+  document.getElementById('colega-snap-overlay').classList.add('open');
+  updateColegaSnapPreview();
+}
+
+function openEditColegaSnap(e, id) {
+  e.stopPropagation();
+  const s = _colegaSnapsCache.find(x => x.id === id);
+  if (!s) return;
+  _editingColegaSnapId = id;
+  _currentColegaIdForSnap = s.colega_id;
+  document.getElementById('colega-snap-date').value = s.date || '';
+  document.getElementById('colega-snap-ad').value = s.ad ?? '';
+  document.getElementById('colega-snap-pe').value = s.pe ?? '';
+  document.getElementById('colega-snap-pfisica').value = s.pfisica ?? '';
+  document.getElementById('colega-snap-bf').value = s.bf ?? '';
+  document.getElementById('colega-snap-modal-title').textContent = 'Editar Atualização';
+  document.getElementById('colega-snap-save-btn').textContent = '💾 Guardar alterações';
+  document.getElementById('colega-snap-overlay').classList.add('open');
+  updateColegaSnapPreview();
+}
+
+function updateColegaSnapPreview() {
+  const ad = parseFloat(document.getElementById('colega-snap-ad').value) || 0;
+  const pe = parseFloat(document.getElementById('colega-snap-pe').value) || 0;
+  const pfisica = parseFloat(document.getElementById('colega-snap-pfisica').value) || 0;
+  const bf = parseFloat(document.getElementById('colega-snap-bf').value) || 0;
+  const pf = computePF(ad, pe, pfisica, bf);
+  document.getElementById('colega-snap-preview').innerHTML = `<div style="font-size:13px;">PF estimado: <b>${pf.toFixed(4)}</b></div>`;
+}
+
+async function saveColegaSnap() {
+  const date = document.getElementById('colega-snap-date').value.trim();
+  if (!date) { alert('Preenche a data.'); return; }
+  const row = {
+    colega_id: _currentColegaIdForSnap,
+    date,
+    ad: parseFloat(document.getElementById('colega-snap-ad').value) || 0,
+    pe: parseFloat(document.getElementById('colega-snap-pe').value) || 0,
+    pfisica: parseFloat(document.getElementById('colega-snap-pfisica').value) || 0,
+    bf: parseFloat(document.getElementById('colega-snap-bf').value) || 0,
+  };
+  const btn = document.getElementById('colega-snap-save-btn');
+  btn.disabled = true;
+  const { error } = _editingColegaSnapId
+    ? await db.from('classificacao_colega_snapshots').update(row).eq('id', _editingColegaSnapId)
+    : await db.from('classificacao_colega_snapshots').insert([row]);
+  btn.disabled = false;
+  if (error) { alert('Erro ao guardar: ' + error.message); return; }
+  _editingColegaSnapId = null;
+  document.getElementById('colega-snap-overlay').classList.remove('open');
+  renderClass();
+}
+
+async function deleteColegaSnap(e, id) {
+  e.stopPropagation();
+  if (!confirm('Eliminar esta atualização?')) return;
+  await db.from('classificacao_colega_snapshots').delete().eq('id', id);
+  renderClass();
+}
+
+// ── Render Ranking ──
+function renderRankingContent() {
+  const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const snapsPeriodo = filterByPeriod(_colegaSnapsCache);
+
+  // valor "Eu"
+  const jogos    = filterByPeriod(_classJogosCache);
+  const escritas = filterByPeriod(_classEscritasCache);
+  const fisicas  = filterByPeriod(_classFisicasCache);
+  const AD = jogos.length ? jogos.reduce((s, r) => s + (r.nota || 0), 0) / jogos.length : 0;
+  const PE = escritas.length ? escritas.reduce((s, r) => s + (r.nota || 0), 0) / escritas.length : 0;
+  const fisicasAptos = fisicas.map(r => computeFisicaResult(r)).filter(r => r.apto);
+  const PFisica = fisicasAptos.length ? fisicasAptos.reduce((s, r) => s + r.pfi, 0) / fisicasAptos.length : 0;
+  const myPF = computePF(AD, PE, PFisica, _classConfigCache.bf || 0);
+
+  const entries = [{ id: 'me', nome: 'Eu', pf: myPF, isMe: true }];
+
+  _colegasCache.forEach(c => {
+    const snaps = snapsPeriodo.filter(s => s.colega_id === c.id).sort((a, b) => parseDate(b.date) - parseDate(a.date));
+    const latest = snaps[0];
+    if (!latest) return;
+    const pf = computePF(latest.ad, latest.pe, latest.pfisica, latest.bf);
+    entries.push({ id: c.id, nome: c.nome, pf, isMe: false, snapDate: latest.date });
+  });
+
+  entries.sort((a, b) => b.pf - a.pf);
+
+  const tableRows = entries.map((e, idx) => {
+    const deltaTop  = idx === 0 ? 0 : entries[0].pf - e.pf;
+    const deltaPrev = idx === 0 ? 0 : entries[idx-1].pf - e.pf;
+    return `
+      <div class="nomeacao-item" style="${e.isMe ? 'border-color:var(--accent);' : ''}">
+        <div class="date-col" style="min-width:40px;">
+          <div class="day" style="font-size:18px;">${idx+1}º</div>
+        </div>
+        <div class="info-col">
+          <div class="teams-row">${e.isMe ? '⭐ Eu' : e.nome}</div>
+          ${!e.isMe ? `<div class="meta-row">atualizado em ${e.snapDate}</div>` : ''}
+          ${idx > 0 ? `<div class="meta-row">-${deltaTop.toFixed(4)} do 1º · -${deltaPrev.toFixed(4)} do anterior</div>` : ''}
+        </div>
+        <div class="amount-col"><div class="total">${e.pf.toFixed(4)}</div></div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('class-ranking-table').innerHTML = tableRows || '<div class="empty-state"><div class="icon">🏆</div><div>Sem dados suficientes.</div></div>';
+
+  // Lista de colegas + histórico
+  const cont = document.getElementById('class-colegas-content');
+  cont.innerHTML = _colegasCache.length === 0
+    ? '<div class="empty-state"><div class="icon">👥</div><div>Sem colegas adicionados.</div></div>'
+    : _colegasCache.map(c => {
+        const snaps = _colegaSnapsCache.filter(s => s.colega_id === c.id);
+        return `
+        <div class="stats-section" style="margin-bottom:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;">
+          <div class="nomeacoes-header" style="margin-bottom:8px;">
+            <h2 style="font-size:14px;">${c.nome}</h2>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="openEditColegaNome(event,${c.id})">✎ Nome</button>
+              <button class="btn btn-primary" style="padding:6px 10px;font-size:12px;" onclick="openAddColegaSnap(event,${c.id})">+ Atualização</button>
+              <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;color:var(--red);" onclick="deleteColega(event,${c.id})">✕</button>
+            </div>
+          </div>
+          ${snaps.length === 0
+            ? '<p style="color:var(--muted);font-size:12px;">Sem atualizações registadas.</p>'
+            : snaps.map(s => `
+              <div class="nomeacao-item" style="padding:10px 14px;margin-bottom:6px;" onclick="openEditColegaSnap(event,${s.id})">
+                <div class="date-col" style="min-width:70px;">
+                  <div class="day" style="font-size:16px;">${(s.date||'').split('/')[0]||''}</div>
+                  <div class="month">${monthNames[parseInt((s.date||'').split('/')[1])-1]||''}</div>
+                </div>
+                <div class="info-col">
+                  <div class="meta-row">AD ${(s.ad||0).toFixed(2)} · PE ${(s.pe||0).toFixed(2)} · PFisica ${(s.pfisica||0).toFixed(2)}</div>
+                </div>
+                <div class="amount-col"><div class="total" style="font-size:14px;">${computePF(s.ad, s.pe, s.pfisica, s.bf).toFixed(4)}</div></div>
+                <button class="del-btn" onclick="deleteColegaSnap(event,${s.id})">✕</button>
+              </div>`).join('')}
+        </div>`;
+      }).join('');
 }
 
 // ──────────────────────────────────────────────
