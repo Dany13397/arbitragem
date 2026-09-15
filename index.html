@@ -9,9 +9,28 @@
   <meta name="apple-mobile-web-app-title" content="Árbitro">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0f1117">
+  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+
+  <!-- Splash screens iOS (evita o "flash" branco ao abrir a partir do ecrã principal) -->
+  <link rel="apple-touch-startup-image" href="/icons/splash/splash-se.png"
+        media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="/icons/splash/splash-8.png"
+        media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="/icons/splash/splash-x.png"
+        media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="/icons/splash/splash-xr.png"
+        media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="/icons/splash/splash-12.png"
+        media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="/icons/splash/splash-14pro.png"
+        media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="/icons/splash/splash-12promax.png"
+        media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="/icons/splash/splash-14promax.png"
+        media="(device-width: 430px) and (device-height: 930px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
@@ -587,10 +606,12 @@
       border-radius: 8px;
       color: var(--text);
       padding: 8px 12px;
-      font-size: 15px;
+      font-size: 16px;
       outline: none;
       font-family: inherit;
       margin-top: 4px;
+      -webkit-appearance: none;
+      appearance: none;
     }
     .edit-input:focus { border-color: var(--accent); }
     select.edit-input option { background: var(--surface2); }
