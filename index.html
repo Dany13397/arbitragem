@@ -3167,6 +3167,13 @@ async function deleteCat(e, id) {
   renderCat();
 }
 
+async function markCatPago(e, id, value) {
+  e.stopPropagation();
+  const { error } = await db.from('cat_atividades').update({ paid: value }).eq('id', id);
+  if (error) { alert('Erro: ' + error.message); return; }
+  renderCat();
+}
+
 let _catCache = [];
 
 async function renderCat() {
@@ -3205,6 +3212,9 @@ async function renderCat() {
       <div class="info-col">
         <div class="teams-row">${r.activity}</div>
         ${r.description ? `<div class="meta-row" style="color:var(--muted);font-size:11px;">${r.description}</div>` : ''}
+        <div class="meta-row">
+          <button onclick="markCatPago(event,${r.id},${!r.paid})" style="background:${r.paid ? 'rgba(34,197,94,.15)' : 'rgba(100,100,100,.15)'};color:${r.paid ? '#22c55e' : '#8892b0'};border:1px solid ${r.paid ? 'rgba(34,197,94,.3)' : 'rgba(136,146,176,.3)'};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">${r.paid ? '✓ Pago' : '○ Pago'}</button>
+        </div>
       </div>
       <div class="amount-col"><div class="total">${fmt(r.total||0)}</div></div>
       <button class="del-btn" onclick="openEditCat(event,${r.id})" title="Editar">✎</button>
