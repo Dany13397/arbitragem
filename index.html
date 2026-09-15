@@ -2934,28 +2934,6 @@ function renderStatsContent() {
   const sumsFpf = sumList(fpf);
   const sumsAfb = sumList(afb);
 
-  // ── Resumo financeiro ──
-  document.getElementById('s-finance-cards').innerHTML = `
-    <div class="big-stat">
-      <div class="label">Total Combinado</div>
-      <div class="value">${fmt(sumsAll.total)}</div>
-      <div class="sub">${sumsAll.count} jogo${sumsAll.count !== 1 ? 's' : ''}</div>
-    </div>
-    <div class="big-stat">
-      <div class="label">FPF</div>
-      <div class="value">${fmt(sumsFpf.total)}</div>
-      <div class="sub">${sumsFpf.count} jogo${sumsFpf.count !== 1 ? 's' : ''}</div>
-    </div>
-    <div class="big-stat">
-      <div class="label">AFB</div>
-      <div class="value">${fmt(sumsAfb.total)}</div>
-      <div class="sub">${sumsAfb.count} jogo${sumsAfb.count !== 1 ? 's' : ''}</div>
-    </div>`;
-
-  document.getElementById('s-breakdown').innerHTML =
-    renderFinanceSection('s-fpf-detail', 'FPF', '#ef4444', sumsFpf) +
-    renderFinanceSection('s-afb-detail', 'AFB', '#4f7fff', sumsAfb);
-
   // ── Recibos (Outros Recibos FPF + CAT) ──
   const recibosFpf = filterByPeriod(_allRecibosCache);
   const cat        = filterByPeriod(_allCatCache);
@@ -2969,6 +2947,32 @@ function renderStatsContent() {
   const sRecibosFpf = sumRecibos(recibosFpf);
   const sRecibosCat = sumRecibos(cat);
   const sRecibosAll = { count: sRecibosFpf.count + sRecibosCat.count, total: sRecibosFpf.total + sRecibosCat.total };
+
+  // ── Resumo financeiro (jogos + recibos) ──
+  const grandFpf   = sumsFpf.total + sRecibosFpf.total;
+  const grandAfb   = sumsAfb.total + sRecibosCat.total;
+  const grandTotal = grandFpf + grandAfb;
+
+  document.getElementById('s-finance-cards').innerHTML = `
+    <div class="big-stat">
+      <div class="label">Total Combinado</div>
+      <div class="value">${fmt(grandTotal)}</div>
+      <div class="sub">${sumsAll.count} jogo${sumsAll.count !== 1 ? 's' : ''} · ${sRecibosAll.count} recibo${sRecibosAll.count !== 1 ? 's' : ''}</div>
+    </div>
+    <div class="big-stat">
+      <div class="label">FPF</div>
+      <div class="value">${fmt(grandFpf)}</div>
+      <div class="sub">${sumsFpf.count} jogo${sumsFpf.count !== 1 ? 's' : ''} · ${sRecibosFpf.count} recibo${sRecibosFpf.count !== 1 ? 's' : ''}</div>
+    </div>
+    <div class="big-stat">
+      <div class="label">AFB</div>
+      <div class="value">${fmt(grandAfb)}</div>
+      <div class="sub">${sumsAfb.count} jogo${sumsAfb.count !== 1 ? 's' : ''} · ${sRecibosCat.count} recibo${sRecibosCat.count !== 1 ? 's' : ''}</div>
+    </div>`;
+
+  document.getElementById('s-breakdown').innerHTML =
+    renderFinanceSection('s-fpf-detail', 'FPF', '#ef4444', sumsFpf) +
+    renderFinanceSection('s-afb-detail', 'AFB', '#4f7fff', sumsAfb);
 
   document.getElementById('s-recibos-cards').innerHTML = `
     <div class="big-stat">
