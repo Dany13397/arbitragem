@@ -1038,6 +1038,8 @@
 <div class="view active" id="view-nova">
   <div class="container">
 
+    <div id="next-game-widget"></div>
+
     <div class="sms-box">
       <label>Colar SMS de Nomeação</label>
       <textarea id="sms-input" placeholder="Cola aqui a mensagem SMS recebida..."></textarea>
@@ -1377,6 +1379,13 @@
           </div>
           <p style="color:var(--muted);font-size:11px;margin-bottom:10px;">Calculado a partir dos dados de cada colega, dentro da época selecionada. BT considerada sempre no valor máximo para todos.</p>
           <div id="class-ranking-table"></div>
+        </div>
+
+        <div class="stats-section">
+          <div class="section-title">Evolução do PF</div>
+          <div class="chart-box">
+            <canvas id="s-pf-chart" height="180"></canvas>
+          </div>
         </div>
 
         <div class="stats-section">
@@ -2860,6 +2869,52 @@ function toggleMonthGroup(key) {
 }
 
 // ──────────────────────────────────────────────
+// PRÓXIMO JOGO (widget da aba Nova)
+// ──────────────────────────────────────────────
+async function renderNextGameWidget() {
+  const el = document.getElementById('next-game-widget');
+  if (!el) return;
+
+  const { data, error } = await db.from('nomeacoes').select('*');
+  if (error || !data) { el.innerHTML = ''; return; }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const upcoming = data
+    .filter(n => n.date && parseDate(n.date) >= today)
+    .sort((a, b) => {
+      const diff = parseDate(a.date) - parseDate(b.date);
+      if (diff !== 0) return diff;
+      return (a.time || '').localeCompare(b.time || '');
+    });
+
+  const n = upcoming[0];
+  if (!n) { el.innerHTML = ''; return; }
+
+  const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const [d, m] = n.date.split('/');
+  const isFpf = !n.source || n.source === 'fpf';
+  const color = isFpf ? '#ef4444' : '#4f7fff';
+
+  el.innerHTML = `
+    <div class="nomeacao-item" style="border-left:3px solid ${color};margin-bottom:16px;" onclick="showView('${isFpf ? 'lista' : 'afb'}')">
+      <div class="date-col">
+        <div class="day">${d}</div>
+        <div class="month">${monthNames[parseInt(m)-1]||''}</div>
+        ${n.time ? `<div class="time">${n.time}</div>` : ''}
+      </div>
+      <div class="info-col">
+        <div class="teams-row" style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px;">${isFpf ? 'FPF' : 'AFB'} · Próximo Jogo</span>
+        </div>
+        <div class="teams-row">${n.home_team||'?'} <span style="color:var(--muted);font-weight:400">vs</span> ${n.away_team||'?'}</div>
+        <div class="meta-row">${n.venue||''}${n.location ? ' · ' + n.location : ''}${n.my_role ? ' · ' + n.my_role : ''}</div>
+      </div>
+    </div>`;
+}
+
+// ──────────────────────────────────────────────
 // MODAL
 // ──────────────────────────────────────────────
 let _listaCache = [];
@@ -3399,6 +3454,7 @@ function showView(name) {
   const navBtn = document.getElementById('nav-' + name);
   if (navBtn) navBtn.classList.add('active');
   window.scrollTo({ top: 0, behavior: 'instant' });
+  if (name === 'nova') renderNextGameWidget();
   if (name === 'lista') renderLista();
   if (name === 'stats') renderStats();
   if (name === 'afb') renderAfb();
@@ -4308,6 +4364,71 @@ function closeColegaDetail() {
 }
 
 // ── Render Ranking ──
+function computeTimelineForPerson(jogos, escritas, fisicas, bf) {
+  const allDates = [...new Set([...jogos, ...escritas, ...fisicas].map(r => r.date).filter(Boolean))]
+    .sort((a, b) => parseDate(a) - parseDate(b));
+  return allDates.map(d => {
+    const dd = parseDate(d);
+    const cumJogos    = jogos.filter(r => parseDate(r.date) <= dd);
+    const cumEscritas = escritas.filter(r => parseDate(r.date) <= dd);
+    const cumFisicas  = fisicas.filter(r => parseDate(r.date) <= dd);
+    const m = computeClassMetrics(cumJogos, cumEscritas, cumFisicas, bf);
+    return { date: d, pf: m.PF };
+  });
+}
+
+const PF_CHART_COLORS = ['#4f7fff', '#ef4444', '#22c55e', '#f59e0b', '#a855f7', '#ec4899', '#14b8a6'];
+let _pfChart = null;
+
+function renderPfEvolutionChart(entriesWithLists) {
+  const canvas = document.getElementById('s-pf-chart');
+  if (!canvas) return;
+
+  const timelines = entriesWithLists.map(e => ({
+    ...e,
+    timeline: computeTimelineForPerson(e.jogos, e.escritas, e.fisicas, e.bf),
+  })).filter(e => e.timeline.length > 0);
+
+  if (_pfChart) { _pfChart.destroy(); _pfChart = null; }
+  if (timelines.length === 0) return;
+
+  const allDates = [...new Set(timelines.flatMap(e => e.timeline.map(t => t.date)))]
+    .sort((a, b) => parseDate(a) - parseDate(b));
+
+  const datasets = timelines.map((e, i) => {
+    let last = null;
+    const data = allDates.map(d => {
+      const point = e.timeline.find(t => t.date === d);
+      if (point) last = point.pf;
+      return parseDate(d) < parseDate(e.timeline[0].date) ? null : last;
+    });
+    const color = e.isMe ? '#4f7fff' : PF_CHART_COLORS[(i + 1) % PF_CHART_COLORS.length];
+    return {
+      label: e.isMe ? 'Eu' : e.nome,
+      data,
+      borderColor: color,
+      backgroundColor: color,
+      borderWidth: e.isMe ? 3 : 2,
+      spanGaps: false,
+      tension: 0.2,
+      pointRadius: 3,
+    };
+  });
+
+  const ctx = canvas.getContext('2d');
+  _pfChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: allDates, datasets },
+    options: {
+      plugins: { legend: { display: true, labels: { color: '#8892b0', boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { color: '#8892b0' }, grid: { color: '#2e3250' } },
+        y: { ticks: { color: '#8892b0' }, grid: { color: '#2e3250' } }
+      }
+    }
+  });
+}
+
 function renderRankingContent() {
   // valor "Eu"
   const jogosMe    = filterByPeriod(_classJogosCache.filter(r => !r.colega_id));
@@ -4315,7 +4436,7 @@ function renderRankingContent() {
   const fisicasMe  = filterByPeriod(_classFisicasCache.filter(r => !r.colega_id));
   const mMe = computeClassMetrics(jogosMe, escritasMe, fisicasMe, _classConfigCache.bf || 0);
 
-  const entries = [{ id: 'me', nome: 'Eu', pf: mMe.PF, isMe: true }];
+  const entries = [{ id: 'me', nome: 'Eu', pf: mMe.PF, isMe: true, jogos: jogosMe, escritas: escritasMe, fisicas: fisicasMe, bf: _classConfigCache.bf || 0 }];
 
   _colegasCache.forEach(c => {
     const jogos    = filterByPeriod(_classJogosCache.filter(r => r.colega_id === c.id));
@@ -4323,8 +4444,10 @@ function renderRankingContent() {
     const fisicas  = filterByPeriod(_classFisicasCache.filter(r => r.colega_id === c.id));
     if (!jogos.length && !escritas.length && !fisicas.length) return;
     const m = computeClassMetrics(jogos, escritas, fisicas, 0);
-    entries.push({ id: c.id, nome: c.nome, pf: m.PF, isMe: false });
+    entries.push({ id: c.id, nome: c.nome, pf: m.PF, isMe: false, jogos, escritas, fisicas, bf: 0 });
   });
+
+  renderPfEvolutionChart(entries);
 
   entries.sort((a, b) => b.pf - a.pf);
 
@@ -4565,6 +4688,8 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW:', err));
   });
 }
+
+renderNextGameWidget();
 
 window.addEventListener('online',  () => { renderLista(); });
 window.addEventListener('offline', () => {
