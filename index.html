@@ -1240,6 +1240,12 @@
     </div>
 
     <div class="stats-section">
+      <div class="section-title">Recibos</div>
+      <div class="stats-grid" id="s-recibos-cards"></div>
+      <div id="s-recibos-breakdown"></div>
+    </div>
+
+    <div class="stats-section">
       <div class="section-title">Atividade</div>
       <div class="chart-box" style="margin-bottom:16px;">
         <canvas id="s-chart-months" height="100"></canvas>
@@ -2832,18 +2838,28 @@ async function deleteNomeacao(e, id) {
 let _monthChart = null;
 
 async function renderStats() {
-  // Para estatísticas precisamos de todos os jogos (FPF + AFB)
-  const { data, error } = await db.from('nomeacoes').select('*').order('created_at', { ascending: false });
-  if (!error && data) {
-    _allNomeacoesCache = data;
+  // Para estatísticas precisamos de todos os jogos (FPF + AFB) e recibos (FPF + CAT)
+  const [nomRes, recibosRes, catRes] = await Promise.all([
+    db.from('nomeacoes').select('*').order('created_at', { ascending: false }),
+    db.from('outros_recibos').select('*').order('date', { ascending: false }),
+    db.from('cat_atividades').select('*').order('date', { ascending: false }),
+  ]);
+
+  if (!nomRes.error && nomRes.data) {
+    _allNomeacoesCache = nomRes.data;
   } else if (!_allNomeacoesCache.length && _listaCache.length) {
     _allNomeacoesCache = _listaCache;
   }
+  if (!recibosRes.error && recibosRes.data) _allRecibosCache = recibosRes.data;
+  if (!catRes.error && catRes.data) _allCatCache = catRes.data;
+
   buildPeriodSelector('period-selector-stats');
   renderStatsContent();
 }
 
 let _allNomeacoesCache = [];
+let _allRecibosCache = [];
+let _allCatCache = [];
 
 function sumList(list) {
   return {
@@ -2939,6 +2955,66 @@ function renderStatsContent() {
   document.getElementById('s-breakdown').innerHTML =
     renderFinanceSection('s-fpf-detail', 'FPF', '#4f7fff', sumsFpf) +
     renderFinanceSection('s-afb-detail', 'AFB', '#f59e0b', sumsAfb);
+
+  // ── Recibos (Outros Recibos FPF + CAT) ──
+  const recibosFpf = filterByPeriod(_allRecibosCache);
+  const cat        = filterByPeriod(_allCatCache);
+
+  const sumRecibos = list => ({
+    count:   list.length,
+    total:   list.reduce((s, r) => s + (r.total || 0), 0),
+    paid:    list.filter(r => r.paid).reduce((s, r) => s + (r.total || 0), 0),
+    pending: list.filter(r => !r.paid).reduce((s, r) => s + (r.total || 0), 0),
+  });
+  const sRecibosFpf = sumRecibos(recibosFpf);
+  const sRecibosCat = sumRecibos(cat);
+  const sRecibosAll = { count: sRecibosFpf.count + sRecibosCat.count, total: sRecibosFpf.total + sRecibosCat.total };
+
+  document.getElementById('s-recibos-cards').innerHTML = `
+    <div class="big-stat">
+      <div class="label">Total Recibos</div>
+      <div class="value">${fmt(sRecibosAll.total)}</div>
+      <div class="sub">${sRecibosAll.count} recibo${sRecibosAll.count !== 1 ? 's' : ''}</div>
+    </div>
+    <div class="big-stat">
+      <div class="label">Outros Recibos FPF</div>
+      <div class="value">${fmt(sRecibosFpf.total)}</div>
+      <div class="sub">${sRecibosFpf.count} recibo${sRecibosFpf.count !== 1 ? 's' : ''}</div>
+    </div>
+    <div class="big-stat">
+      <div class="label">CAT Futsal</div>
+      <div class="value">${fmt(sRecibosCat.total)}</div>
+      <div class="sub">${sRecibosCat.count} recibo${sRecibosCat.count !== 1 ? 's' : ''}</div>
+    </div>`;
+
+  const recibosBar = (label, color, s) => {
+    if (s.count === 0) return '';
+    return `
+    <div style="background:var(--surface);border:1px solid ${color}44;border-left:3px solid ${color};border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:13px;font-weight:700;color:${color};">${label}</span>
+        <span style="font-size:18px;font-weight:700;font-family:Consolas,monospace;color:var(--text);">${fmt(s.total)}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;">
+        <div class="stat-card" style="padding:8px 10px;">
+          <div class="stat-label">Recibos</div>
+          <div class="stat-value" style="font-size:18px;">${s.count}</div>
+        </div>
+        <div class="stat-card" style="padding:8px 10px;">
+          <div class="stat-label">✓ Recebido</div>
+          <div class="stat-value" style="font-size:16px;color:#22c55e;">${fmt(s.paid)}</div>
+        </div>
+        <div class="stat-card" style="padding:8px 10px;">
+          <div class="stat-label">○ Pendente</div>
+          <div class="stat-value" style="font-size:16px;color:#8892b0;">${fmt(s.pending)}</div>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  document.getElementById('s-recibos-breakdown').innerHTML =
+    recibosBar('Outros Recibos FPF', '#4f7fff', sRecibosFpf) +
+    recibosBar('CAT Futsal', '#f59e0b', sRecibosCat);
 
   // ── Jogos por mês (FPF vs AFB) ──
   const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
