@@ -1324,41 +1324,14 @@
       <div id="class-fisicas-content"></div>
     </div>
 
-    <!-- BN / PN -->
+    <!-- BN -->
     <div class="stats-section">
-      <div class="section-title">Bonificações (BN) e Penalizações (PN)</div>
+      <div class="section-title">Bonificações (BN)</div>
+      <p style="color:var(--muted);font-size:11px;margin-bottom:10px;">BT considerada sempre no valor máximo (0,20), assumindo realização de todos os trabalhos das plataformas digitais.</p>
       <div class="detail-grid">
-        <div class="detail-item">
-          <label>Trabalhos realizados</label>
-          <input type="number" id="cfg-trabalhos-feitos" class="edit-input" min="0" oninput="saveClassConfigDebounced()">
-        </div>
-        <div class="detail-item">
-          <label>Trabalhos propostos (total)</label>
-          <input type="number" id="cfg-trabalhos-total" class="edit-input" min="0" oninput="saveClassConfigDebounced()">
-        </div>
         <div class="detail-item" style="grid-column:span 2;">
           <label>BF (não definido no regulamento — preenche só se a FPF indicar um valor)</label>
           <input type="number" id="cfg-bf" class="edit-input" step="0.01" min="0" oninput="saveClassConfigDebounced()">
-        </div>
-        <div class="detail-item">
-          <label>PN1 — Jogos de suspensão disciplinar</label>
-          <input type="number" id="cfg-pn1" class="edit-input" min="0" oninput="saveClassConfigDebounced()">
-        </div>
-        <div class="detail-item">
-          <label>PN2 — Dispensas além de 4</label>
-          <input type="number" id="cfg-pn2" class="edit-input" min="0" oninput="saveClassConfigDebounced()">
-        </div>
-        <div class="detail-item">
-          <label>PN3 — Pedidos de dispensa fora de prazo</label>
-          <input type="number" id="cfg-pn3" class="edit-input" min="0" oninput="saveClassConfigDebounced()">
-        </div>
-        <div class="detail-item">
-          <label>PN4 — Art. 26º (reprovação 1ª/2ª chamada)</label>
-          <select id="cfg-pn4" class="edit-input" onchange="saveClassConfigDebounced()">
-            <option value="0">Nenhuma</option>
-            <option value="0.03">0,03 (reprovou 1ª, passou 2ª)</option>
-            <option value="0.06">0,06 (reprovou 2ª, passou 3ª)</option>
-          </select>
         </div>
       </div>
       <div id="cfg-save-status" style="font-size:11px;color:var(--muted);margin-top:10px;"></div>
@@ -3702,7 +3675,7 @@ async function deleteRecibo(e, id) {
 let _classJogosCache = [];
 let _classEscritasCache = [];
 let _classFisicasCache = [];
-let _classConfigCache = { season: null, trabalhos_feitos: 0, trabalhos_total: 0, bf: 0, pn1_jogos: 0, pn2_dispensas: 0, pn3_pedidos: 0, pn4: 0 };
+let _classConfigCache = { season: null, bf: 0 };
 let _editingClassJogoId = null;
 let _editingClassEscritaId = null;
 let _editingClassFisicaId = null;
@@ -3781,14 +3754,8 @@ function activeClassSeason() {
 async function loadClassConfig() {
   const season = activeClassSeason();
   const { data } = await db.from('classificacao_config').select('*').eq('season', season).maybeSingle();
-  _classConfigCache = data || { season, trabalhos_feitos: 0, trabalhos_total: 0, bf: 0, pn1_jogos: 0, pn2_dispensas: 0, pn3_pedidos: 0, pn4: 0 };
-  document.getElementById('cfg-trabalhos-feitos').value = _classConfigCache.trabalhos_feitos || 0;
-  document.getElementById('cfg-trabalhos-total').value  = _classConfigCache.trabalhos_total || 0;
-  document.getElementById('cfg-bf').value  = _classConfigCache.bf || 0;
-  document.getElementById('cfg-pn1').value = _classConfigCache.pn1_jogos || 0;
-  document.getElementById('cfg-pn2').value = _classConfigCache.pn2_dispensas || 0;
-  document.getElementById('cfg-pn3').value = _classConfigCache.pn3_pedidos || 0;
-  document.getElementById('cfg-pn4').value = _classConfigCache.pn4 || 0;
+  _classConfigCache = data || { season, bf: 0 };
+  document.getElementById('cfg-bf').value = _classConfigCache.bf || 0;
   document.getElementById('cfg-save-status').textContent = '';
 }
 
@@ -3802,13 +3769,7 @@ async function saveClassConfig() {
   const season = activeClassSeason();
   const row = {
     season,
-    trabalhos_feitos: parseFloat(document.getElementById('cfg-trabalhos-feitos').value) || 0,
-    trabalhos_total:  parseFloat(document.getElementById('cfg-trabalhos-total').value) || 0,
-    bf:  parseFloat(document.getElementById('cfg-bf').value) || 0,
-    pn1_jogos:     parseFloat(document.getElementById('cfg-pn1').value) || 0,
-    pn2_dispensas: parseFloat(document.getElementById('cfg-pn2').value) || 0,
-    pn3_pedidos:   parseFloat(document.getElementById('cfg-pn3').value) || 0,
-    pn4: parseFloat(document.getElementById('cfg-pn4').value) || 0,
+    bf: parseFloat(document.getElementById('cfg-bf').value) || 0,
   };
   const { error } = await db.from('classificacao_config').upsert(row, { onConflict: 'season' });
   _classConfigCache = row;
@@ -3996,20 +3957,13 @@ function renderClassContent() {
   const aptos = fisicasResults.filter(x => x.res.apto);
   const PFisica = aptos.length ? aptos.reduce((s, x) => s + x.res.pfi, 0) / aptos.length : 0;
 
-  // BN / PN
+  // BN (BT sempre no valor máximo — todos os trabalhos realizados)
   const cfg = _classConfigCache;
-  const pct = cfg.trabalhos_total > 0 ? cfg.trabalhos_feitos / cfg.trabalhos_total : 0;
-  const BT = pct >= 0.90 ? 0.20 : (pct >= 0.75 ? 0.10 : 0.00);
+  const BT = 0.20;
   const BF = cfg.bf || 0;
   const BN = BT + BF;
 
-  const PN1 = (cfg.pn1_jogos || 0) * 0.01;
-  const PN2 = (cfg.pn2_dispensas || 0) * 0.04;
-  const PN3 = (cfg.pn3_pedidos || 0) * 0.08;
-  const PN4 = cfg.pn4 || 0;
-  const PN = PN1 + PN2 + PN3 + PN4;
-
-  const PF = AD * 0.850 + PE * 0.065 + PFisica * 0.085 - PN + BN;
+  const PF = AD * 0.850 + PE * 0.065 + PFisica * 0.085 + BN;
 
   document.getElementById('class-final-card').innerHTML = `
     <div class="stats-grid">
@@ -4036,12 +3990,7 @@ function renderClassContent() {
       <div class="big-stat">
         <div class="label">BN</div>
         <div class="value" style="font-size:20px;color:#22c55e;">+${BN.toFixed(2)}</div>
-        <div class="sub">BT ${BT.toFixed(2)} + BF ${BF.toFixed(2)}</div>
-      </div>
-      <div class="big-stat">
-        <div class="label">PN</div>
-        <div class="value" style="font-size:20px;color:var(--red);">-${PN.toFixed(2)}</div>
-        <div class="sub">PN1 ${PN1.toFixed(2)} + PN2 ${PN2.toFixed(2)} + PN3 ${PN3.toFixed(2)} + PN4 ${PN4.toFixed(2)}</div>
+        <div class="sub">BT ${BT.toFixed(2)} (máxima) + BF ${BF.toFixed(2)}</div>
       </div>
     </div>`;
 
