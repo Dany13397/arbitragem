@@ -1385,7 +1385,7 @@
 <div class="modal-overlay" id="cat-overlay" onclick="if(event.target===this)document.getElementById('cat-overlay').classList.remove('open')">
   <div class="modal" id="cat-modal">
     <div class="modal-header">
-      <div class="modal-title">Nova Atividade CAT</div>
+      <div class="modal-title" id="cat-modal-title">Nova Atividade CAT</div>
       <button class="modal-close" onclick="document.getElementById('cat-overlay').classList.remove('open')">✕</button>
     </div>
     <div class="modal-body">
@@ -1398,10 +1398,6 @@
           <div class="detail-item" style="grid-column:span 2;">
             <label>Data (DD/MM/AAAA)</label>
             <input type="text" id="cat-date" class="edit-input" placeholder="ex: 15/03/2026">
-          </div>
-          <div class="detail-item" id="cat-km-row" style="grid-column:span 2; display:none;">
-            <label>Km (ida e volta)</label>
-            <input type="number" id="cat-km" class="edit-input" placeholder="0" min="0" oninput="updateCatPreview()">
           </div>
           <div class="detail-item" style="grid-column:span 2;">
             <label>Descrição</label>
@@ -3071,40 +3067,55 @@ function showAfbSub(sub) {
 // CAT ACTIVITIES
 // ──────────────────────────────────────────────
 const CAT_ACTIVITIES = [
-  { label: 'Elaboração testes escritos',       value: 35, km: false, meal: false },
-  { label: 'Correção testes escritos',          value: 25, km: true,  meal: false },
-  { label: 'Preparação de formação ARA',        value: 40, km: false, meal: false },
-  { label: 'Preparação de formação (outras)',   value: 25, km: false, meal: false },
-  { label: 'Formação/provas até meio dia',      value: 25, km: true,  meal: false },
-  { label: 'Formação/provas dia inteiro',       value: 40, km: true,  meal: true  },
-  { label: 'Análise relatórios OBS',            value: 25, km: false, meal: false },
-  { label: 'Reclamações Arb (testes escritos)', value: 25, km: true,  meal: false },
-  { label: 'Reclamações Arb (Relatórios OBS)',  value: 40, km: false, meal: false },
-  { label: 'Preparação do treino',              value: 25, km: false, meal: false },
-  { label: 'Dinamização do treino',             value: 25, km: false, meal: false },
+  { label: 'Elaboração testes escritos',       value: 35 },
+  { label: 'Correção testes escritos',          value: 25 },
+  { label: 'Preparação de formação ARA',        value: 40 },
+  { label: 'Preparação de formação (outras)',   value: 25 },
+  { label: 'Formação/provas até meio dia',      value: 25 },
+  { label: 'Formação/provas dia inteiro',       value: 40 },
+  { label: 'Análise relatórios OBS',            value: 25 },
+  { label: 'Reclamações Arb (testes escritos)', value: 25 },
+  { label: 'Reclamações Arb (Relatórios OBS)',  value: 40 },
+  { label: 'Preparação do treino',              value: 25 },
+  { label: 'Dinamização do treino',             value: 25 },
 ];
 
+let _editingCatId = null;
+
 function openAddCat() {
+  _editingCatId = null;
   const sel = document.getElementById('cat-activity');
   sel.innerHTML = CAT_ACTIVITIES.map((a, i) =>
     `<option value="${i}">${a.label} — ${fmt(a.value)}</option>`
   ).join('');
   document.getElementById('cat-date').value = '';
-  document.getElementById('cat-km').value = '';
   document.getElementById('cat-desc').value = '';
-  document.getElementById('cat-km-row').style.display = 'none';
-  document.getElementById('cat-preview').style.display = 'none';
+  document.getElementById('cat-modal-title').textContent = 'Nova Atividade CAT';
+  document.getElementById('cat-save-btn').textContent = '💾 Guardar';
   document.getElementById('cat-overlay').classList.add('open');
   onCatActivityChange();
 }
 
+function openEditCat(e, id) {
+  e.stopPropagation();
+  const r = _catCache.find(x => x.id === id);
+  if (!r) return;
+  _editingCatId = id;
+  const sel = document.getElementById('cat-activity');
+  sel.innerHTML = CAT_ACTIVITIES.map((a, i) =>
+    `<option value="${i}">${a.label} — ${fmt(a.value)}</option>`
+  ).join('');
+  const idx = CAT_ACTIVITIES.findIndex(a => a.label === r.activity);
+  sel.value = idx >= 0 ? idx : 0;
+  document.getElementById('cat-date').value = r.date || '';
+  document.getElementById('cat-desc').value = r.description || '';
+  document.getElementById('cat-modal-title').textContent = 'Editar Atividade CAT';
+  document.getElementById('cat-save-btn').textContent = '💾 Guardar alterações';
+  document.getElementById('cat-overlay').classList.add('open');
+  updateCatPreview();
+}
+
 function onCatActivityChange() {
-  const idx = parseInt(document.getElementById('cat-activity').value);
-  const act = CAT_ACTIVITIES[idx];
-  if (!act) return;
-  const kmRow = document.getElementById('cat-km-row');
-  kmRow.style.display = act.km ? '' : 'none';
-  if (!act.km) document.getElementById('cat-km').value = '';
   updateCatPreview();
 }
 
@@ -3112,17 +3123,9 @@ function updateCatPreview() {
   const idx = parseInt(document.getElementById('cat-activity').value);
   const act = CAT_ACTIVITIES[idx];
   if (!act) return;
-  const km  = act.km ? (parseInt(document.getElementById('cat-km').value) || 0) : 0;
-  const kmTotal   = km > 0 ? km * 2 * KM_RATE : 0;
-  const mealTotal = act.meal ? MEAL : 0;
-  const total = act.value + kmTotal + mealTotal;
 
-  const lines = [`<div>Honorário: ${fmt(act.value)}</div>`];
-  if (kmTotal > 0) lines.push(`<div>KM (${km} km): ${fmt(kmTotal)}</div>`);
-  if (mealTotal > 0) lines.push(`<div>Subsídio refeição: ${fmt(mealTotal)}</div>`);
-
-  document.getElementById('cat-preview-lines').innerHTML = lines.join('');
-  document.getElementById('cat-preview-total').textContent = fmt(total);
+  document.getElementById('cat-preview-lines').innerHTML = `<div>Honorário: ${fmt(act.value)}</div>`;
+  document.getElementById('cat-preview-total').textContent = fmt(act.value);
   document.getElementById('cat-preview').style.display = '';
 }
 
@@ -3132,31 +3135,39 @@ async function saveCat() {
   const date = document.getElementById('cat-date').value.trim();
   if (!act || !date) { alert('Preenche a data.'); return; }
 
-  const km       = act.km ? (parseInt(document.getElementById('cat-km').value) || 0) : 0;
-  const kmTotal  = km > 0 ? km * 2 * KM_RATE : 0;
-  const mealTotal = act.meal ? MEAL : 0;
-  const total    = act.value + kmTotal + mealTotal;
   const description = document.getElementById('cat-desc').value.trim();
 
   const row = {
     activity: act.label,
     value: act.value,
     date,
-    km,
-    km_total: kmTotal,
-    meal_total: mealTotal,
-    total,
+    total: act.value,
     description,
   };
 
-  document.getElementById('cat-save-btn').disabled = true;
-  const { error } = await db.from('cat_atividades').insert([row]);
-  document.getElementById('cat-save-btn').disabled = false;
+  const btn = document.getElementById('cat-save-btn');
+  const savingLabel = btn.textContent;
+  btn.disabled = true;
+  const { error } = _editingCatId
+    ? await db.from('cat_atividades').update(row).eq('id', _editingCatId)
+    : await db.from('cat_atividades').insert([row]);
+  btn.disabled = false;
+  btn.textContent = savingLabel;
 
   if (error) { alert('Erro ao guardar: ' + error.message); return; }
+  _editingCatId = null;
   document.getElementById('cat-overlay').classList.remove('open');
   renderCat();
 }
+
+async function deleteCat(e, id) {
+  e.stopPropagation();
+  if (!confirm('Eliminar esta atividade?')) return;
+  await db.from('cat_atividades').delete().eq('id', id);
+  renderCat();
+}
+
+let _catCache = [];
 
 async function renderCat() {
   const cont = document.getElementById('cat-content');
@@ -3168,15 +3179,16 @@ async function renderCat() {
     .order('date', { ascending: false });
 
   if (error || !list) {
+    _catCache = [];
     cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Erro ao carregar.</div>';
     return;
   }
 
-  const totalVal   = list.reduce((s, r) => s + (r.total || 0), 0);
-  const totalKm    = list.reduce((s, r) => s + (r.km || 0), 0);
+  _catCache = list;
+
+  const totalVal = list.reduce((s, r) => s + (r.total || 0), 0);
   document.getElementById('cat-stats-row').innerHTML = `
     <div class="stat-card"><div class="stat-label">Atividades</div><div class="stat-value">${list.length}</div></div>
-    <div class="stat-card"><div class="stat-label">KM Total</div><div class="stat-value">${totalKm}</div></div>
     <div class="stat-card"><div class="stat-label">Total CAT</div><div class="stat-value" style="font-size:18px;">${fmt(totalVal)}</div></div>`;
 
   if (list.length === 0) {
@@ -3185,7 +3197,7 @@ async function renderCat() {
   }
 
   cont.innerHTML = list.map(r => `
-    <div class="nomeacao-item">
+    <div class="nomeacao-item" onclick="openEditCat(event,${r.id})">
       <div class="date-col">
         <div class="day">${(r.date||'').split('/')[0]||''}</div>
         <div class="month">${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt((r.date||'').split('/')[1])-1]||''}</div>
@@ -3193,12 +3205,10 @@ async function renderCat() {
       <div class="info-col">
         <div class="teams-row">${r.activity}</div>
         ${r.description ? `<div class="meta-row" style="color:var(--muted);font-size:11px;">${r.description}</div>` : ''}
-        <div class="meta-row">
-          ${r.km > 0 ? `<span style="color:var(--muted);font-size:11px;">${r.km} km</span>` : ''}
-          ${r.meal_total > 0 ? `<span style="color:var(--muted);font-size:11px;"> · Refeição ${fmt(r.meal_total)}</span>` : ''}
-        </div>
       </div>
       <div class="amount-col"><div class="total">${fmt(r.total||0)}</div></div>
+      <button class="del-btn" onclick="openEditCat(event,${r.id})" title="Editar">✎</button>
+      <button class="del-btn" onclick="deleteCat(event,${r.id})">✕</button>
     </div>`).join('');
 }
 
