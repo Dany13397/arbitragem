@@ -2891,7 +2891,7 @@ function toggleMonthGroup(key) {
 }
 
 // ──────────────────────────────────────────────
-// PRÓXIMO JOGO (widget da aba Nova)
+// JOGOS PENDENTES (widget da aba Nova)
 // ──────────────────────────────────────────────
 async function renderNextGameWidget() {
   const el = document.getElementById('next-game-widget');
@@ -2911,16 +2911,16 @@ async function renderNextGameWidget() {
       return (a.time || '').localeCompare(b.time || '');
     });
 
-  const n = upcoming[0];
-  if (!n) { el.innerHTML = ''; return; }
+  if (!upcoming.length) { el.innerHTML = ''; return; }
 
   const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const [d, m] = n.date.split('/');
-  const isFpf = !n.source || n.source === 'fpf';
-  const color = isFpf ? '#ef4444' : '#4f7fff';
 
-  el.innerHTML = `
-    <div class="nomeacao-item" style="border-left:3px solid ${color};margin-bottom:16px;" onclick="showView('${isFpf ? 'lista' : 'afb'}')">
+  const items = upcoming.map((n, i) => {
+    const [d, m] = n.date.split('/');
+    const isFpf = !n.source || n.source === 'fpf';
+    const color = isFpf ? '#ef4444' : '#4f7fff';
+    return `
+    <div class="nomeacao-item" style="border-left:3px solid ${color};margin-bottom:${i === upcoming.length - 1 ? '16' : '8'}px;" onclick="showView('${isFpf ? 'lista' : 'afb'}')">
       <div class="date-col">
         <div class="day">${d}</div>
         <div class="month">${monthNames[parseInt(m)-1]||''}</div>
@@ -2928,12 +2928,15 @@ async function renderNextGameWidget() {
       </div>
       <div class="info-col">
         <div class="teams-row" style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px;">${isFpf ? 'FPF' : 'AFB'} · Próximo Jogo</span>
+          <span style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.5px;">${isFpf ? 'FPF' : 'AFB'} · Pendente</span>
         </div>
         <div class="teams-row">${n.home_team||'?'} <span style="color:var(--muted);font-weight:400">vs</span> ${n.away_team||'?'}</div>
         <div class="meta-row">${n.venue||''}${n.location ? ' · ' + n.location : ''}${n.my_role ? ' · ' + n.my_role : ''}</div>
       </div>
     </div>`;
+  }).join('');
+
+  el.innerHTML = items;
 }
 
 // ──────────────────────────────────────────────
