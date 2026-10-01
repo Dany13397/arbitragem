@@ -37,9 +37,12 @@ function foldLine(line) {
 }
 
 function toIcsDate(dateStr, timeStr) {
-  // dateStr: DD/MM/YYYY, timeStr: HH:MM
-  const [day, month, year] = dateStr.split('/');
-  const [hour, minute] = timeStr.split(':');
+  // dateStr: DD/MM/YYYY (ou DD-MM-YYYY, YYYY-MM-DD), timeStr: HH:MM
+  const parts = String(dateStr).trim().split(/[\/\-.]/);
+  if (parts.length < 3) throw new Error('data inválida: ' + dateStr);
+  let [day, month, year] = parts;
+  if (day.length === 4) [year, month, day] = [day, month, year.slice(0, 2)];
+  const [hour = '0', minute = '0'] = String(timeStr || '00:00').trim().split(/[:hH]/);
   return `${year}${month.padStart(2, '0')}${day.padStart(2, '0')}T${hour.padStart(2, '0')}${minute.padStart(2, '0')}00`;
 }
 
@@ -66,7 +69,7 @@ function buildEvent(game) {
     `Função: ${game.my_role || ''}`,
     game.km ? `Distância: ${game.km} km` : '',
     game.total ? `Prémio total: €${Number(game.total).toFixed(2)}` : '',
-  ].filter(Boolean).join('\\n');
+  ].filter(Boolean).join('\n');
 
   const uid = `arbitragem-${game.id || game.game_id}@dany-arbitro`;
 
@@ -78,7 +81,7 @@ function buildEvent(game) {
     `DTEND;TZID=Europe/Lisbon:${dtend}`,
     foldLine(`SUMMARY:${escapeIcs(summary)}`),
     foldLine(`LOCATION:${escapeIcs(location)}`),
-    foldLine(`DESCRIPTION:${description}`),
+    foldLine(`DESCRIPTION:${escapeIcs(description)}`),
     'BEGIN:VALARM',
     'ACTION:DISPLAY',
     'DESCRIPTION:Enviar resultado do jogo',
@@ -93,7 +96,7 @@ function buildEvent(game) {
 export default async function handler(req, res) {
   // Allow iOS calendar to subscribe
   res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="arbitragem.ics"');
+  res.setHeader('Content-Disposition', 'inline; filename="arbitragem.ics"');
   res.setHeader('Cache-Control', 'no-cache, no-store');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -106,7 +109,9 @@ export default async function handler(req, res) {
 
     if (error) throw error;
 
-    const events = (games || []).map(buildEvent).join('\r\n');
+    const events = (games || []).flatMap(g => {
+      try { return [buildEvent(g)]; } catch (e) { return []; }
+    }).join('\r\n');
 
     const ics = [
       'BEGIN:VCALENDAR',
@@ -120,7 +125,7 @@ export default async function handler(req, res) {
       'BEGIN:VTIMEZONE',
       'TZID:Europe/Lisbon',
       'BEGIN:STANDARD',
-      'DTSTART:19701025T030000',
+      'DTSTART:19701025T020000',
       'RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10',
       'TZOFFSETFROM:+0100',
       'TZOFFSETTO:+0000',
@@ -140,6 +145,7 @@ export default async function handler(req, res) {
 
     res.status(200).send(ics);
   } catch (err) {
+    console.error('calendar feed error', err);
     res.status(500).send(`BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Error//EN\r\nEND:VCALENDAR`);
   }
 }

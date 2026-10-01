@@ -2155,6 +2155,9 @@ function parseSMSText(sms) {
   const isMainRef = raw.startsWith(MY_CODE);
   result.myRole = isMainRef ? '1A' : null;
   result.gameId = isMainRef ? tokens[1] : tokens[0];
+  // Formato "ID 2A COMP#...": função indicada no cabeçalho
+  const headRole = (!isMainRef && /^[1-4]A$/i.test(tokens[1] || '')) ? tokens[1].toUpperCase() : null;
+  if (headRole) result.myRole = headRole;
 
   // Competition: between first # and second #
   const compMatch = raw.match(/#([^#]+)#/);
@@ -2172,7 +2175,7 @@ function parseSMSText(sms) {
   const afterThird = raw.split('#').slice(3).join('#');
 
   // Venue: after PAV until <
-  const venueMatch = afterThird.match(/PAV\s+([^<]+)</i);
+  const venueMatch = afterThird.match(/PAV\s+([^<]+)</i) || afterThird.match(/^([^<]+)</);
   result.venue = venueMatch ? venueMatch[1].trim() : '?';
 
   // Location: between < and >
@@ -2188,6 +2191,11 @@ function parseSMSText(sms) {
   const afterDT = dtMatch ? afterThird.slice(afterThird.indexOf(dtMatch[0]) + dtMatch[0].length).trim() : '';
 
   result.officials = parseOfficials(afterDT, result.myRole);
+
+  // Função vinda do cabeçalho: adiciona-me à lista
+  if (headRole) {
+    result.officials.push({ role: headRole, name: MY_NAME, phone: '', isMe: true });
+  }
 
   // If not 1A, find role by surname in officials list
   if (!result.myRole) {
@@ -2210,7 +2218,7 @@ function parseOfficials(str, myRole) {
   }
 
   // Find all role markers and their positions
-  const markerRe = /(\d[A-Z]-[A-Z]|CRO-[A-Z])/g;
+  const markerRe = /(\d[A-Z]-[A-Z]|(?<![A-Z\d])A-[A-Z]|CRO-[A-Z])/g;
   const markers = [];
   let m;
   while ((m = markerRe.exec(str)) !== null) {
@@ -2239,6 +2247,7 @@ function parseOfficials(str, myRole) {
     else if (roleRaw.startsWith('3A')) role = '3A';
     else if (roleRaw.startsWith('4A')) role = '4A';
     else if (roleRaw.startsWith('CRO')) role = 'CRON';
+    else if (/^A-/.test(roleRaw)) role = '1A';
     else role = roleRaw;
 
     officials.push({ role, name, phone, isMe: false });
