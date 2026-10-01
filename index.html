@@ -2264,9 +2264,29 @@ function capitalizeName(str) {
 // AFB PARSER
 // ──────────────────────────────────────────────
 const AFB_FEES = {
-  // Preencher com os valores reais da AFB
-  // 'NOME COMPETIÇÃO': { '1A': 0, '2A': 0, 'CRON': 0 }
+  'CD F5 1 DIV SEN': { '1A': 32.5, '2A': 30, '3A': 0, '4A': 0, 'CRON': 20 }
 };
+// Regras AFB: km só para 1A, refeição só em jogos depois das 18h, sem perda salarial
+const AFB_KM_RATE = 0.30;
+const AFB_MEAL = 13;
+const AFB_MEAL_AFTER_HOUR = 18;
+
+// Calcula prémio, kms, refeição e perda salarial consoante a origem (FPF/AFB)
+function calcGameCosts({ source, competition, role, date, time, km, requireKmForMeal }) {
+  km = km || 0;
+  if (source === 'afb') {
+    const premio = (AFB_FEES[competition] || {})[role] || 0;
+    const hour = parseInt(String(time || '').split(':')[0]);
+    const kmTotal = role === '1A' ? km * 2 * AFB_KM_RATE : 0;
+    const mealTotal = hour >= AFB_MEAL_AFTER_HOUR ? AFB_MEAL : 0;
+    return { premio, kmTotal, mealTotal, perda: 0, doubleMeal: false, kmRate: AFB_KM_RATE, kmApplies: role === '1A' };
+  }
+  const premio = (FEES[competition] || {})[role] || 0;
+  const doubleMeal = km > MEAL_KM_THRESHOLD;
+  const kmTotal = km > 0 || !requireKmForMeal ? km * 2 * KM_RATE : 0;
+  const mealTotal = requireKmForMeal && km <= 0 ? 0 : (doubleMeal ? MEAL * 2 : MEAL);
+  return { premio, kmTotal, mealTotal, perda: calcPerdaSalarial(date), doubleMeal, kmRate: KM_RATE, kmApplies: true };
+}
 
 // AFB: a mensagem tem sempre "F5" (ex: "CD F5 1 DIV SEN"). Tudo o resto é FPF.
 function isAFBSms(sms) {
@@ -2424,12 +2444,9 @@ function recalculate() {
   const comp = currentParsed.competition;
   const role = currentParsed.myRole;
 
-  const fees = FEES[comp];
-  const premio = fees && role ? (fees[role] || 0) : 0;
-  const kmTotal = km * 2 * KM_RATE;
-  const doubleMeal = km > MEAL_KM_THRESHOLD;
-  const mealTotal = doubleMeal ? MEAL * 2 : MEAL;
-  const perdaSalarial = calcPerdaSalarial(currentParsed.date);
+  const c = calcGameCosts({ source: currentParsed.source, competition: comp, role, date: currentParsed.date, time: currentParsed.time, km });
+  const { premio, kmTotal, mealTotal, doubleMeal, kmRate } = c;
+  const perdaSalarial = c.perda;
   const total = premio + kmTotal + mealTotal + perdaSalarial;
 
   document.getElementById('double-meal-warning').style.display = doubleMeal ? 'flex' : 'none';
@@ -2441,7 +2458,7 @@ function recalculate() {
       <span class="amount">${fmt(premio)}</span>
     </div>
     <div class="calc-line">
-      <span class="desc">Kms (${km} km × 2 × ${KM_RATE}€)</span>
+      <span class="desc">Kms (${km} km × 2 × ${kmRate}€)${c.kmApplies ? '' : ' — só 1A'}</span>
       <span class="amount">${fmt(kmTotal)}</span>
     </div>
     <div class="calc-line">
@@ -2559,11 +2576,7 @@ async function saveManualNomeacao() {
     return;
   }
 
-  const fees = FEES[competition] || {};
-  const premio = fees[my_role] || 0;
-  const kmTotal = km > 0 ? km * 2 * KM_RATE : 0;
-  const mealTotal = km > 0 ? (km > MEAL_KM_THRESHOLD ? MEAL * 2 : MEAL) : 0;
-  const perdaSalarial = calcPerdaSalarial(date);
+  const { premio, kmTotal, mealTotal, perda: perdaSalarial } = calcGameCosts({ source: _manualSource, competition, role: my_role, date, time, km, requireKmForMeal: true });
   const total = premio + kmTotal + mealTotal + perdaSalarial;
 
   const btn = document.getElementById('manual-save-btn');
@@ -2991,14 +3004,16 @@ function openModal(id) {
     </tr>`).join('');
 
   document.getElementById('modal-km-input').value = n.km || 0;
-  renderModalCalc(n.my_role, n.competition, n.km || 0, n.premio, n.km_total, n.meal_total, n.total, n.perda_salarial);
+  renderModalCalc(n.my_role, n.competition, n.km || 0, n.premio, n.km_total, n.meal_total, n.total, n.perda_salarial, n.source);
   document.getElementById('modal-overlay').classList.add('open');
 }
 
 let _modalId = null;
 
-function renderModalCalc(role, comp, km, premio, kmTotal, mealTotal, total, perdaSalarial) {
-  const doubleMeal = km > MEAL_KM_THRESHOLD;
+function renderModalCalc(role, comp, km, premio, kmTotal, mealTotal, total, perdaSalarial, source) {
+  const isAfb = source === 'afb';
+  const kmRate = isAfb ? AFB_KM_RATE : KM_RATE;
+  const doubleMeal = !isAfb && km > MEAL_KM_THRESHOLD;
   const perda = perdaSalarial || 0;
   document.getElementById('modal-calc').innerHTML = `
     <div class="modal-calc-line">
@@ -3006,7 +3021,7 @@ function renderModalCalc(role, comp, km, premio, kmTotal, mealTotal, total, perd
       <span class="amount">${fmt(premio)}</span>
     </div>
     <div class="modal-calc-line">
-      <span class="desc">Kms (${km} km × 2 × ${KM_RATE}€)</span>
+      <span class="desc">Kms (${km} km × 2 × ${kmRate}€)</span>
       <span class="amount">${fmt(kmTotal)}</span>
     </div>
     <div class="modal-calc-line">
@@ -3053,25 +3068,15 @@ function previewModalCalc() {
   const n = _listaCache.find(x => x.id === _modalId);
   if (!n) return;
   const km = parseFloat(document.getElementById('modal-km-input').value) || 0;
-  const fees = FEES[n.competition] || {};
-  const premio = fees[n.my_role] || 0;
-  const kmTotal = km * 2 * KM_RATE;
-  const doubleMeal = km > MEAL_KM_THRESHOLD;
-  const mealTotal = doubleMeal ? MEAL * 2 : MEAL;
-  const perdaSalarial = calcPerdaSalarial(n.date);
-  renderModalCalc(n.my_role, n.competition, km, premio, kmTotal, mealTotal, premio + kmTotal + mealTotal + perdaSalarial, perdaSalarial);
+  const { premio, kmTotal, mealTotal, perda: perdaSalarial } = calcGameCosts({ source: n.source, competition: n.competition, role: n.my_role, date: n.date, time: n.time, km });
+  renderModalCalc(n.my_role, n.competition, km, premio, kmTotal, mealTotal, premio + kmTotal + mealTotal + perdaSalarial, perdaSalarial, n.source);
 }
 
 async function saveModalKm() {
   const n = _listaCache.find(x => x.id === _modalId);
   if (!n) return;
   const km = parseFloat(document.getElementById('modal-km-input').value) || 0;
-  const fees = FEES[n.competition] || {};
-  const premio = fees[n.my_role] || 0;
-  const kmTotal = km * 2 * KM_RATE;
-  const doubleMeal = km > MEAL_KM_THRESHOLD;
-  const mealTotal = doubleMeal ? MEAL * 2 : MEAL;
-  const perdaSalarial = calcPerdaSalarial(n.date);
+  const { premio, kmTotal, mealTotal, perda: perdaSalarial } = calcGameCosts({ source: n.source, competition: n.competition, role: n.my_role, date: n.date, time: n.time, km });
   const total = premio + kmTotal + mealTotal + perdaSalarial;
 
   const btn = document.querySelector('#modal .btn-primary');
@@ -3144,12 +3149,8 @@ async function saveEditNomeacao() {
   }
 
   // Recalcular honorários se competição ou função mudou
-  const fees = FEES[competition] || {};
-  const premio = fees[my_role] || 0;
   const km = n.km || 0;
-  const km_total = km * 2 * KM_RATE;
-  const meal_total = km > MEAL_KM_THRESHOLD ? MEAL * 2 : MEAL;
-  const perda_salarial = calcPerdaSalarial(date);
+  const { premio, kmTotal: km_total, mealTotal: meal_total, perda: perda_salarial } = calcGameCosts({ source: n.source, competition, role: my_role, date, time, km });
   const total = premio + km_total + meal_total + perda_salarial;
 
   const btn = document.getElementById('edit-save-btn');
