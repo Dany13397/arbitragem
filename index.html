@@ -2268,8 +2268,16 @@ const AFB_FEES = {
   // 'NOME COMPETIÇÃO': { '1A': 0, '2A': 0, 'CRON': 0 }
 };
 
+// FPF: começa pelo meu código (1A) ou tem "PAV " / competição da tabela FEES.
+// Tudo o resto (começa pelo nº de jogo) é AFB.
 function isAFBSms(sms) {
-  return /PAV\./i.test(sms);
+  const raw = sms.trim();
+  if (/PAV\./i.test(raw)) return true;
+  if (raw.startsWith(MY_CODE)) return false;
+  if (/PAV\s/i.test(raw)) return false;
+  const comp = (raw.match(/#([^#]+)#/) || [])[1];
+  if (comp && Object.keys(FEES).some(k => k.toLowerCase() === comp.trim().toLowerCase())) return false;
+  return true;
 }
 
 function parseAFBText(sms) {
@@ -2301,7 +2309,7 @@ function parseAFBText(sms) {
   const afterThird = raw.split('#').slice(3).join('#');
 
   // Venue: PAV.NOME até <
-  const venueMatch = afterThird.match(/PAV\.([^<]+)</i);
+  const venueMatch = afterThird.match(/PAV\.([^<]+)</i) || afterThird.match(/^([^<]+)</);
   result.venue = venueMatch ? venueMatch[1].trim() : '?';
 
   // Location: entre < e >
@@ -2323,7 +2331,7 @@ function parseAFBText(sms) {
 function parseAFBOfficials(str, myRole) {
   const officials = [];
   // Padrão: ROLE-INICIAL NOME{9digitos}  ex: A-R MARTINS934270898
-  const re = /([A-Z]+-[A-Z])\s+([A-Z][A-Z\s]+?)(\d{9})/g;
+  const re = /([A-Z]+-[A-Z])\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s.'-]*?)(\d{9})/g;
   let m;
   while ((m = re.exec(str)) !== null) {
     const roleRaw = m[1]; // ex: A-R, CRO-J, 2A-X
@@ -2345,6 +2353,7 @@ function parseAFBOfficials(str, myRole) {
   // Garante que eu apareço com a função correta
   const meEntry = officials.find(o => o.isMe);
   if (meEntry) meEntry.role = myRole;
+  else if (myRole && myRole !== '?') officials.push({ role: myRole === 'CRO' ? 'CRON' : myRole, name: MY_NAME, phone: '', isMe: true });
 
   return officials;
 }
