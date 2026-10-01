@@ -2406,7 +2406,9 @@ function parseSMS() {
 
   document.getElementById('km-input').value = '';
   document.getElementById('ref1a-input').value = '';
-  document.getElementById('ref1a-row').style.display = currentParsed.myRole !== '1A' ? 'block' : 'none';
+  document.getElementById('ref1a-row').style.display = currentParsed.myRole !== '1A' && currentParsed.source !== 'afb' ? 'block' : 'none';
+  const saveBtn = document.querySelector('.btn-success');
+  if (saveBtn) saveBtn.textContent = currentParsed.source === 'afb' ? '💾 Guardar nos jogos da AFB' : '💾 Guardar nos jogos da FPF';
   recalculate();
   document.getElementById('parsed-result').style.display = 'block';
 
@@ -2497,7 +2499,7 @@ async function saveNomeacao() {
 
   // Prepend 1A to officials if we're not the main ref
   const officials = [...currentParsed.officials];
-  if (currentParsed.myRole !== '1A') {
+  if (currentParsed.myRole !== '1A' && currentParsed.source !== 'afb') {
     const ref1aName = document.getElementById('ref1a-input').value.trim();
     officials.unshift({ role: '1A', name: ref1aName || '—', phone: '', isMe: false });
   }
@@ -2525,7 +2527,7 @@ async function saveNomeacao() {
 
   if (error) {
     alert('Erro ao guardar: ' + error.message);
-    btn.textContent = '💾 Guardar Nomeação';
+    btn.textContent = currentParsed.source === 'afb' ? '💾 Guardar nos jogos da AFB' : '💾 Guardar nos jogos da FPF';
     btn.disabled = false;
     return;
   }
@@ -2988,7 +2990,7 @@ function openModal(id) {
   // Campo 1A editável quando não sou o principal
   const officials = Array.isArray(n.officials) ? n.officials : [];
   const ref1aRow = document.getElementById('modal-ref1a-row');
-  if (n.my_role !== '1A') {
+  if (n.my_role !== '1A' && n.source !== 'afb') {
     ref1aRow.style.display = 'block';
     const ref1a = officials.find(o => o.role === '1A');
     document.getElementById('modal-ref1a-input').value = ref1a ? ref1a.name : '';
