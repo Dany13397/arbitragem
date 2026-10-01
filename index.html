@@ -2268,16 +2268,9 @@ const AFB_FEES = {
   // 'NOME COMPETIÇÃO': { '1A': 0, '2A': 0, 'CRON': 0 }
 };
 
-// FPF: começa pelo meu código (1A) ou tem "PAV " / competição da tabela FEES.
-// Tudo o resto (começa pelo nº de jogo) é AFB.
+// AFB: a mensagem tem sempre "F5" (ex: "CD F5 1 DIV SEN"). Tudo o resto é FPF.
 function isAFBSms(sms) {
-  const raw = sms.trim();
-  if (/PAV\./i.test(raw)) return true;
-  if (raw.startsWith(MY_CODE)) return false;
-  if (/PAV\s/i.test(raw)) return false;
-  const comp = (raw.match(/#([^#]+)#/) || [])[1];
-  if (comp && Object.keys(FEES).some(k => k.toLowerCase() === comp.trim().toLowerCase())) return false;
-  return true;
+  return /\bF5\b/i.test(sms) || /PAV\./i.test(sms);
 }
 
 function parseAFBText(sms) {
