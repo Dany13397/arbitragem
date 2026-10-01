@@ -2970,9 +2970,17 @@ async function renderNextGameWidget() {
 // ──────────────────────────────────────────────
 let _listaCache = [];
 
+// Procura a nomeação na lista FPF ou AFB (a janela de detalhe serve as duas)
+function _findNomeacao(id) {
+  return _listaCache.find(x => x.id === id) || (typeof _afbCache !== 'undefined' ? _afbCache.find(x => x.id === id) : null);
+}
+function _refreshNomeacoes(n) {
+  if (n && n.source === 'afb') renderAfb(); else renderLista();
+}
+
 function openModal(id) {
   _modalId = id;
-  const n = _listaCache.find(x => x.id === id);
+  const n = _findNomeacao(id);
   if (!n) return;
 
   const monthShort = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -3042,7 +3050,7 @@ function renderModalCalc(role, comp, km, premio, kmTotal, mealTotal, total, perd
 }
 
 async function saveRef1A() {
-  const n = _listaCache.find(x => x.id === _modalId);
+  const n = _findNomeacao(_modalId);
   if (!n) return;
   const name = document.getElementById('modal-ref1a-input').value.trim();
   const officials = Array.isArray(n.officials) ? [...n.officials] : [];
@@ -3067,7 +3075,7 @@ async function saveRef1A() {
 }
 
 function previewModalCalc() {
-  const n = _listaCache.find(x => x.id === _modalId);
+  const n = _findNomeacao(_modalId);
   if (!n) return;
   const km = parseFloat(document.getElementById('modal-km-input').value) || 0;
   const { premio, kmTotal, mealTotal, perda: perdaSalarial } = calcGameCosts({ source: n.source, competition: n.competition, role: n.my_role, date: n.date, time: n.time, km });
@@ -3075,7 +3083,7 @@ function previewModalCalc() {
 }
 
 async function saveModalKm() {
-  const n = _listaCache.find(x => x.id === _modalId);
+  const n = _findNomeacao(_modalId);
   if (!n) return;
   const km = parseFloat(document.getElementById('modal-km-input').value) || 0;
   const { premio, kmTotal, mealTotal, perda: perdaSalarial } = calcGameCosts({ source: n.source, competition: n.competition, role: n.my_role, date: n.date, time: n.time, km });
@@ -3092,8 +3100,9 @@ async function saveModalKm() {
 
   if (error) { alert('Erro: ' + error.message); return; }
 
-  renderModalCalc(n.my_role, n.competition, km, premio, kmTotal, mealTotal, total, perdaSalarial);
-  renderLista();
+  n.km = km; n.km_total = kmTotal; n.meal_total = mealTotal; n.perda_salarial = perdaSalarial; n.total = total;
+  renderModalCalc(n.my_role, n.competition, km, premio, kmTotal, mealTotal, total, perdaSalarial, n.source);
+  _refreshNomeacoes(n);
 }
 
 function closeModal(e) {
@@ -3116,7 +3125,7 @@ function toggleEditMode() {
     edit.style.display = 'none';
     btn.textContent = '✏️ Editar';
   } else {
-    const n = _listaCache.find(x => x.id === _modalId);
+    const n = _findNomeacao(_modalId);
     if (!n) return;
     document.getElementById('edit-home').value = n.home_team || '';
     document.getElementById('edit-away').value = n.away_team || '';
@@ -3124,7 +3133,19 @@ function toggleEditMode() {
     document.getElementById('edit-time').value = n.time || '';
     document.getElementById('edit-venue').value = n.venue || '';
     document.getElementById('edit-location').value = n.location || '';
-    document.getElementById('edit-competition').value = n.competition || 'LP';
+    const compSel = document.getElementById('edit-competition');
+    if (!window._fpfCompOptions) window._fpfCompOptions = compSel.innerHTML;
+    if (n.source === 'afb') {
+      const comps = Object.keys(AFB_FEES);
+      if (n.competition && !comps.includes(n.competition)) comps.push(n.competition);
+      compSel.innerHTML = comps.map(c => `<option value="${c}">${c}</option>`).join('');
+    } else {
+      compSel.innerHTML = window._fpfCompOptions;
+      if (n.competition && ![...compSel.options].some(o => o.value === n.competition)) {
+        compSel.add(new Option(n.competition, n.competition));
+      }
+    }
+    compSel.value = n.competition || compSel.options[0]?.value;
     document.getElementById('edit-role').value = n.my_role || '1A';
     normal.style.display = 'none';
     edit.style.display = '';
@@ -3133,7 +3154,7 @@ function toggleEditMode() {
 }
 
 async function saveEditNomeacao() {
-  const n = _listaCache.find(x => x.id === _modalId);
+  const n = _findNomeacao(_modalId);
   if (!n) return;
 
   const home_team   = document.getElementById('edit-home').value.trim();
@@ -3172,7 +3193,7 @@ async function saveEditNomeacao() {
   // Volta ao modo normal com dados atualizados
   toggleEditMode();
   openModal(_modalId);
-  renderLista();
+  _refreshNomeacoes(n);
 }
 
 async function markKmReceived(e, id, value) {
