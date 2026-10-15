@@ -2359,7 +2359,12 @@ function capitalizeName(str) {
 // AFB PARSER
 // ──────────────────────────────────────────────
 const AFB_FEES = {
-  'CD F5 1 DIV SEN': { '1A': 32.5, '2A': 30, '3A': 0, '4A': 0, 'CRON': 20 }
+  'CD F5 1 DIV SEN': { '1A': 32, '2A': 30, '3A': 0, '4A': 0, 'CRON': 20 },
+  'AFB JUN': { '1A': 29, '2A': 28, '3A': 0, '4A': 0, 'CRON': 19 },
+  'AFB JUV': { '1A': 27, '2A': 26, '3A': 0, '4A': 0, 'CRON': 0 },
+  'AFB INI': { '1A': 27, '2A': 26, '3A': 0, '4A': 0, 'CRON': 0 },
+  'AFB INF': { '1A': 27, '2A': 24, '3A': 0, '4A': 0, 'CRON': 0 },
+  'AFB BEN': { '1A': 27, '2A': 0, '3A': 0, '4A': 0, 'CRON': 0 }
 };
 // Regras AFB: km só para 1A, refeição só em jogos depois das 18h, sem perda salarial
 const AFB_KM_RATE = 0.30;
