@@ -660,7 +660,7 @@
       margin-bottom: 28px;
     }
 
-    .big-stat[onclick], .stat-card[onclick] { cursor: pointer; }
+    .big-stat[onclick], .stat-card[onclick], .comp-row[onclick], .colleague-row[onclick], .location-pill[onclick] { cursor: pointer; }
     .big-stat[onclick]:active, .stat-card[onclick]:active { opacity: .75; }
     .big-stat {
       background: var(--surface);
@@ -3392,8 +3392,8 @@ function sumList(list) {
 let _statDetails = {};
 const _esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-function statClick(id, title, items) {
-  _statDetails[id] = { title, items };
+function statClick(id, title, items, showZero = false) {
+  _statDetails[id] = { title, items, showZero };
   return `onclick="openStatDetail('${id}')"`;
 }
 
@@ -3414,7 +3414,7 @@ function catStatItem(r) {
 function openStatDetail(id) {
   const d = _statDetails[id];
   if (!d) return;
-  const items = d.items.filter(i => i.amount > 0)
+  const items = d.items.filter(i => d.showZero || i.amount > 0)
     .sort((a, b) => parseDate(b.date || '01/01/1970') - parseDate(a.date || '01/01/1970'));
   const total = items.reduce((s, i) => s + i.amount, 0);
   document.getElementById('stat-detail-title').textContent = d.title;
@@ -3613,6 +3613,15 @@ function renderStatsContent() {
       ]
     },
     options: {
+      onClick: (evt, els) => {
+        if (!els || !els.length) return;
+        const k = allMonths[els[0].index];
+        const src = els[0].datasetIndex === 0 ? 'FPF' : 'AFB';
+        const list = (src === 'FPF' ? fpf : afb).filter(g => g.date.split('/').slice(1).reverse().join('-') === k);
+        const id = 'jg-month-' + src + '-' + k;
+        statClick(id, src + ' — ' + monthLabels[els[0].index], list.map(g => gameStatItem(g)), true);
+        openStatDetail(id);
+      },
       plugins: { legend: { display: true, labels: { color: '#8892b0', boxWidth: 12 } } },
       scales: {
         x: { ticks: { color: '#8892b0' }, grid: { color: '#2e3250' }, stacked: false },
@@ -3629,8 +3638,8 @@ function renderStatsContent() {
     compMap[n.competition].total += n.total || 0;
   });
   const sortedComps = Object.entries(compMap).sort((a,b) => b[1].count - a[1].count);
-  document.getElementById('s-comp-list').innerHTML = sortedComps.map(([comp, d]) => `
-    <div class="comp-row">
+  document.getElementById('s-comp-list').innerHTML = sortedComps.map(([comp, d], i) => `
+    <div class="comp-row" ${statClick('jg-comp-' + i, comp + ' — ' + d.source.toUpperCase(), all.filter(g => g.competition === comp).map(g => gameStatItem(g)), true)}>
       <span class="badge badge-lp" style="${d.source==='afb'?'background:rgba(79,127,255,.15);color:#4f7fff;border-color:rgba(79,127,255,.3);':''}">${comp}</span>
       <span class="comp-name" style="font-size:10px;color:var(--muted);">${d.source.toUpperCase()}</span>
       <span class="comp-count">${d.count} jogo${d.count !== 1 ? 's' : ''}</span>
@@ -3645,8 +3654,8 @@ function renderStatsContent() {
 
   const locMap = {};
   all.forEach(n => { if (n.location) locMap[n.location] = (locMap[n.location] || 0) + 1; });
-  document.getElementById('s-locations').innerHTML = Object.entries(locMap).sort((a,b) => b[1]-a[1]).map(([loc, cnt]) => `
-    <div class="location-pill"><span>${loc}</span><span class="loc-count">${cnt}×</span></div>`).join('');
+  document.getElementById('s-locations').innerHTML = Object.entries(locMap).sort((a,b) => b[1]-a[1]).map(([loc, cnt], i) => `
+    <div class="location-pill" ${statClick('jg-loc-' + i, 'Jogos em ' + loc, all.filter(g => g.location === loc).map(g => gameStatItem(g)), true)}><span>${loc}</span><span class="loc-count">${cnt}×</span></div>`).join('');
 
   // ── Jogos por função (todos) ──
   const roleMap = {};
@@ -3655,7 +3664,7 @@ function renderStatsContent() {
   const sortedRoles = Object.entries(roleMap).sort((a,b) => roleOrder.indexOf(a[0]) - roleOrder.indexOf(b[0]));
   const maxRole = Math.max(...sortedRoles.map(r => r[1]), 1);
   document.getElementById('s-roles').innerHTML = sortedRoles.map(([role, cnt]) => `
-    <div class="colleague-row">
+    <div class="colleague-row" ${statClick('jg-role-' + role, 'Jogos como ' + role, all.filter(g => g.my_role === role).map(g => gameStatItem(g)), true)}>
       <span class="role-tag">${role}</span>
       <div class="col-bar" style="flex:1;margin:0 12px;"><div class="col-bar-fill" style="width:${Math.round(cnt/maxRole*100)}%"></div></div>
       <span class="col-count">${cnt} jogo${cnt !== 1 ? 's' : ''}</span>
@@ -3670,8 +3679,8 @@ function renderStatsContent() {
   });
   const sortedCols = Object.entries(colMap).sort((a,b) => b[1]-a[1]).slice(0, 15);
   const maxCol = sortedCols[0]?.[1] || 1;
-  document.getElementById('s-colleagues').innerHTML = sortedCols.map(([name, cnt]) => `
-    <div class="colleague-row">
+  document.getElementById('s-colleagues').innerHTML = sortedCols.map(([name, cnt], i) => `
+    <div class="colleague-row" ${statClick('jg-col-' + i, 'Jogos com ' + name, all.filter(g => Array.isArray(g.officials) && g.officials.some(o => !o.isMe && o.name === name)).map(g => gameStatItem(g)), true)}>
       <span class="col-name">${name}</span>
       <div class="col-bar"><div class="col-bar-fill" style="width:${Math.round(cnt/maxCol*100)}%"></div></div>
       <span class="col-count">${cnt}×</span>
