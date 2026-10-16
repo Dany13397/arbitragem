@@ -660,6 +660,8 @@
       margin-bottom: 28px;
     }
 
+    .big-stat[onclick], .stat-card[onclick] { cursor: pointer; }
+    .big-stat[onclick]:active, .stat-card[onclick]:active { opacity: .75; }
     .big-stat {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -1676,6 +1678,17 @@
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════════ MODAL DETALHE ESTATÍSTICAS ══════════════════ -->
+<div class="modal-overlay" id="stat-detail-overlay" onclick="if(event.target===this)closeStatDetail()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="stat-detail-title"></div>
+      <button class="modal-close" onclick="closeStatDetail()">✕</button>
+    </div>
+    <div class="modal-body" id="stat-detail-body"></div>
   </div>
 </div>
 
@@ -3375,7 +3388,59 @@ function sumList(list) {
   };
 }
 
-function renderFinanceSection(elId, label, color, sums, showPerda) {
+// ── Detalhe das caixas das estatísticas ──
+let _statDetails = {};
+const _esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function statClick(id, title, items) {
+  _statDetails[id] = { title, items };
+  return `onclick="openStatDetail('${id}')"`;
+}
+
+function gameStatItem(n, field = 'total') {
+  return { date: n.date, title: `${n.home_team} vs ${n.away_team}`,
+    sub: [n.competition, n.my_role, (n.source === 'afb' ? 'AFB' : 'FPF')].filter(Boolean).join(' · '),
+    amount: n[field] || 0 };
+}
+function reciboStatItem(r, field = 'total') {
+  const t = (r.type || '').toUpperCase();
+  const title = r.type === 'selecao' || (!r.type && r.home_team) ? `${r.home_team} vs ${r.away_team}` : (r.description || t || 'Recibo');
+  return { date: r.date, title, sub: `Recibo ${t || 'FPF'} · ${r.paid ? '✓ recebido' : '○ pendente'}`, amount: r[field] || 0 };
+}
+function catStatItem(r) {
+  return { date: r.date, title: r.activity || 'Atividade CAT', sub: `CAT${r.description ? ' · ' + r.description : ''} · ${r.paid ? '✓ recebido' : '○ pendente'}`, amount: r.total || 0 };
+}
+
+function openStatDetail(id) {
+  const d = _statDetails[id];
+  if (!d) return;
+  const items = d.items.filter(i => i.amount > 0)
+    .sort((a, b) => parseDate(b.date || '01/01/1970') - parseDate(a.date || '01/01/1970'));
+  const total = items.reduce((s, i) => s + i.amount, 0);
+  document.getElementById('stat-detail-title').textContent = d.title;
+  document.getElementById('stat-detail-body').innerHTML = items.length ? `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${items.map(i => `
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;background:var(--surface2);border-radius:10px;">
+          <div style="min-width:0;">
+            <div style="font-size:11px;color:var(--muted);">${_esc(i.date)}</div>
+            <div style="font-size:13px;font-weight:600;">${_esc(i.title)}</div>
+            <div style="font-size:11px;color:var(--muted);">${_esc(i.sub)}</div>
+          </div>
+          <div style="font-family:Consolas,monospace;font-weight:700;white-space:nowrap;">${fmt(i.amount)}</div>
+        </div>`).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-weight:700;">
+      <span>Total (${items.length})</span>
+      <span style="font-family:Consolas,monospace;color:var(--accent);">${fmt(total)}</span>
+    </div>` : '<div class="empty-state"><div>Sem itens.</div></div>';
+  document.getElementById('stat-detail-overlay').classList.add('open');
+}
+function closeStatDetail() {
+  document.getElementById('stat-detail-overlay').classList.remove('open');
+}
+
+function renderFinanceSection(elId, label, color, sums, showPerda, games = []) {
   const { count, total, premio, km_total, meal_total, perda } = sums;
   const pct = v => total ? Math.round(v / total * 100) : 0;
   const rows = [
@@ -3393,26 +3458,26 @@ function renderFinanceSection(elId, label, color, sums, showPerda) {
         <span style="font-size:18px;font-weight:700;font-family:Consolas,monospace;color:var(--text);">${fmt(total)}</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px;">
-        <div class="stat-card" style="padding:8px 10px;">
+        <div class="stat-card" ${statClick(`fin-${elId}-total`, `${label} — Jogos`, games.map(g => gameStatItem(g, 'total')))} style="padding:8px 10px;">
           <div class="stat-label">Jogos</div>
           <div class="stat-value" style="font-size:18px;">${count}</div>
         </div>
-        <div class="stat-card" style="padding:8px 10px;">
+        <div class="stat-card" ${statClick(`fin-${elId}-premio`, `${label} — Prémios`, games.map(g => gameStatItem(g, 'premio')))} style="padding:8px 10px;">
           <div class="stat-label">Prémios</div>
           <div class="stat-value" style="font-size:16px;">${fmt(premio)}</div>
           <div style="font-size:10px;color:var(--muted);">${pct(premio)}%</div>
         </div>
-        <div class="stat-card" style="padding:8px 10px;">
+        <div class="stat-card" ${statClick(`fin-${elId}-km_total`, `${label} — Kms`, games.map(g => gameStatItem(g, 'km_total')))} style="padding:8px 10px;">
           <div class="stat-label">Kms</div>
           <div class="stat-value" style="font-size:16px;">${fmt(km_total)}</div>
           <div style="font-size:10px;color:var(--muted);">${pct(km_total)}%</div>
         </div>
-        <div class="stat-card" style="padding:8px 10px;">
+        <div class="stat-card" ${statClick(`fin-${elId}-meal_total`, `${label} — Refeição`, games.map(g => gameStatItem(g, 'meal_total')))} style="padding:8px 10px;">
           <div class="stat-label">Refeição</div>
           <div class="stat-value" style="font-size:16px;">${fmt(meal_total)}</div>
           <div style="font-size:10px;color:var(--muted);">${pct(meal_total)}%</div>
         </div>
-        ${perda > 0 ? `<div class="stat-card" style="padding:8px 10px;">
+        ${perda > 0 ? `<div class="stat-card" ${statClick(`fin-${elId}-perda_salarial`, `${label} — Perda Sal.`, games.map(g => gameStatItem(g, 'perda_salarial')))} style="padding:8px 10px;">
           <div class="stat-label">Perda Sal.</div>
           <div class="stat-value" style="font-size:16px;">${fmt(perda)}</div>
           <div style="font-size:10px;color:var(--muted);">${pct(perda)}%</div>
@@ -3455,45 +3520,51 @@ function renderStatsContent() {
   const grandAfb   = sumsAfb.total + sRecibosCat.total;
   const grandTotal = grandFpf + grandAfb;
 
+  _statDetails = {};
+  const itFpf = [...fpf.map(g => gameStatItem(g)), ...recibosFpf.map(r => reciboStatItem(r))];
+  const itAfb = [...afb.map(g => gameStatItem(g)), ...cat.map(catStatItem)];
+  const itRecFpf = recibosFpf.map(r => reciboStatItem(r));
+  const itCat = cat.map(catStatItem);
+
   document.getElementById('s-finance-cards').innerHTML = `
-    <div class="big-stat">
+    <div class="big-stat" ${statClick('tot-all', 'Total Combinado', [...itFpf, ...itAfb])}>
       <div class="label">Total Combinado</div>
       <div class="value">${fmt(grandTotal)}</div>
       <div class="sub">${sumsAll.count} jogo${sumsAll.count !== 1 ? 's' : ''} · ${sRecibosAll.count} recibo${sRecibosAll.count !== 1 ? 's' : ''}</div>
     </div>
-    <div class="big-stat">
+    <div class="big-stat" ${statClick('tot-fpf', 'FPF', itFpf)}>
       <div class="label">FPF</div>
       <div class="value">${fmt(grandFpf)}</div>
       <div class="sub">${sumsFpf.count} jogo${sumsFpf.count !== 1 ? 's' : ''} · ${sRecibosFpf.count} recibo${sRecibosFpf.count !== 1 ? 's' : ''}</div>
     </div>
-    <div class="big-stat">
+    <div class="big-stat" ${statClick('tot-afb', 'AFB', itAfb)}>
       <div class="label">AFB</div>
       <div class="value">${fmt(grandAfb)}</div>
       <div class="sub">${sumsAfb.count} jogo${sumsAfb.count !== 1 ? 's' : ''} · ${sRecibosCat.count} recibo${sRecibosCat.count !== 1 ? 's' : ''}</div>
     </div>`;
 
   document.getElementById('s-breakdown').innerHTML =
-    renderFinanceSection('s-fpf-detail', 'FPF', '#ef4444', sumsFpf) +
-    renderFinanceSection('s-afb-detail', 'AFB', '#4f7fff', sumsAfb);
+    renderFinanceSection('s-fpf-detail', 'FPF', '#ef4444', sumsFpf, undefined, fpf) +
+    renderFinanceSection('s-afb-detail', 'AFB', '#4f7fff', sumsAfb, undefined, afb);
 
   document.getElementById('s-recibos-cards').innerHTML = `
-    <div class="big-stat">
+    <div class="big-stat" ${statClick('rec-all', 'Total Recibos', [...itRecFpf, ...itCat])}>
       <div class="label">Total Recibos</div>
       <div class="value">${fmt(sRecibosAll.total)}</div>
       <div class="sub">${sRecibosAll.count} recibo${sRecibosAll.count !== 1 ? 's' : ''}</div>
     </div>
-    <div class="big-stat">
+    <div class="big-stat" ${statClick('rec-fpf', 'Outros Recibos FPF', itRecFpf)}>
       <div class="label">Outros Recibos FPF</div>
       <div class="value">${fmt(sRecibosFpf.total)}</div>
       <div class="sub">${sRecibosFpf.count} recibo${sRecibosFpf.count !== 1 ? 's' : ''}</div>
     </div>
-    <div class="big-stat">
+    <div class="big-stat" ${statClick('rec-cat', 'CAT Futsal', itCat)}>
       <div class="label">CAT Futsal</div>
       <div class="value">${fmt(sRecibosCat.total)}</div>
       <div class="sub">${sRecibosCat.count} recibo${sRecibosCat.count !== 1 ? 's' : ''}</div>
     </div>`;
 
-  const recibosBar = (label, color, s) => {
+  const recibosBar = (label, color, s, items) => {
     if (s.count === 0) return '';
     return `
     <div style="background:var(--surface);border:1px solid ${color}44;border-left:3px solid ${color};border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;">
@@ -3502,15 +3573,15 @@ function renderStatsContent() {
         <span style="font-size:18px;font-weight:700;font-family:Consolas,monospace;color:var(--text);">${fmt(s.total)}</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;">
-        <div class="stat-card" style="padding:8px 10px;">
+        <div class="stat-card" ${statClick('rb-' + label + '-all', label, items)} style="padding:8px 10px;">
           <div class="stat-label">Recibos</div>
           <div class="stat-value" style="font-size:18px;">${s.count}</div>
         </div>
-        <div class="stat-card" style="padding:8px 10px;">
+        <div class="stat-card" ${statClick('rb-' + label + '-paid', label + ' — Recebido', items.filter(i => i.sub.includes('✓')))} style="padding:8px 10px;">
           <div class="stat-label">✓ Recebido</div>
           <div class="stat-value" style="font-size:16px;color:#22c55e;">${fmt(s.paid)}</div>
         </div>
-        <div class="stat-card" style="padding:8px 10px;">
+        <div class="stat-card" ${statClick('rb-' + label + '-pend', label + ' — Pendente', items.filter(i => i.sub.includes('○')))} style="padding:8px 10px;">
           <div class="stat-label">○ Pendente</div>
           <div class="stat-value" style="font-size:16px;color:#8892b0;">${fmt(s.pending)}</div>
         </div>
@@ -3519,8 +3590,8 @@ function renderStatsContent() {
   };
 
   document.getElementById('s-recibos-breakdown').innerHTML =
-    recibosBar('Outros Recibos FPF', '#ef4444', sRecibosFpf) +
-    recibosBar('CAT Futsal', '#4f7fff', sRecibosCat);
+    recibosBar('Outros Recibos FPF', '#ef4444', sRecibosFpf, itRecFpf) +
+    recibosBar('CAT Futsal', '#4f7fff', sRecibosCat, itCat);
 
   // ── Jogos por mês (FPF vs AFB) ──
   const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
