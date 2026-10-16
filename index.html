@@ -3787,7 +3787,22 @@ async function renderCat() {
     return;
   }
 
-  cont.innerHTML = list.map(r => `
+  // Agrupar por mês/ano (mais recente primeiro), como nos jogos
+  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const groups = {};
+  list.forEach(r => {
+    const p = (r.date || '').split('/');
+    const key = p.length === 3 ? p[2] + '-' + p[1] : '0000-00';
+    (groups[key] = groups[key] || []).push(r);
+  });
+  const dayOf = r => parseInt((r.date || '').split('/')[0]) || 0;
+
+  cont.innerHTML = Object.keys(groups).sort((a, b) => b.localeCompare(a)).map(key => {
+    const [year, month] = key.split('-');
+    const monthLabel = key === '0000-00' ? 'Sem data' : monthNames[parseInt(month) - 1] + ' ' + year;
+    const rows = groups[key].sort((a, b) => dayOf(b) - dayOf(a));
+    const monthTotal = rows.reduce((s, r) => s + (r.total || 0), 0);
+    const items = rows.map(r => `
     <div class="nomeacao-item" onclick="openEditCat(event,${r.id})">
       <div class="date-col">
         <div class="day">${(r.date||'').split('/')[0]||''}</div>
@@ -3804,6 +3819,15 @@ async function renderCat() {
       <button class="del-btn" onclick="openEditCat(event,${r.id})" title="Editar">✎</button>
       <button class="del-btn" onclick="deleteCat(event,${r.id})">✕</button>
     </div>`).join('');
+    return `
+      <div class="month-group" id="mg-cat-${key}">
+        <div class="month-label" onclick="toggleMonthGroup('cat-${key}')">
+          <span>${monthLabel}<span class="month-chevron">▼</span></span>
+          <span class="month-total">${fmt(monthTotal)}</span>
+        </div>
+        <div class="month-items">${items}</div>
+      </div>`;
+  }).join('');
 }
 
 // ──────────────────────────────────────────────
