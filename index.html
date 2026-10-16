@@ -2438,13 +2438,19 @@ function parseAFBText(sms) {
   const afterDT = dtMatch ? afterThird.slice(afterThird.indexOf(dtMatch[0]) + dtMatch[0].length).trim() : '';
   result.officials = parseAFBOfficials(afterDT, result.myRole);
 
+  // Função não indicada no início: usa a lista; se não estou listado, sou o 1A
+  if (result.myRole === '?' && !result.officials.some(o => o.isMe) && !result.officials.some(o => o.role === '1A')) {
+    result.myRole = '1A';
+    result.officials.unshift({ role: '1A', name: MY_NAME, phone: '', isMe: true });
+  }
+
   return result;
 }
 
 function parseAFBOfficials(str, myRole) {
   const officials = [];
   // Padrão: ROLE-INICIAL NOME{9digitos}  ex: A-R MARTINS934270898
-  const re = /([A-Z]+-[A-Z])\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s.'-]*?)(\d{9})/g;
+  const re = /([A-Z0-9]+-[A-Z])\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s.'-]*?)(\d{9})/g;
   let m;
   while ((m = re.exec(str)) !== null) {
     const roleRaw = m[1]; // ex: A-R, CRO-J, 2A-X
@@ -2465,7 +2471,7 @@ function parseAFBOfficials(str, myRole) {
 
   // Garante que eu apareço com a função correta
   const meEntry = officials.find(o => o.isMe);
-  if (meEntry) meEntry.role = myRole;
+  if (meEntry) { if (myRole !== '?') meEntry.role = myRole; }
   else if (myRole && myRole !== '?') officials.push({ role: myRole === 'CRO' ? 'CRON' : myRole, name: MY_NAME, phone: '', isMe: true });
 
   return officials;
